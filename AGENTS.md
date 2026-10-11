@@ -30,6 +30,10 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   - pruebas jsdom en `/tmp/opencode/card-test/test2.js` (25/25).
 - `this._built` debe ponerse a `true` al final de `_init()`; si no, la tarjeta se
   reconstruye en cada actualización de estado y pierde el estado.
+- La estética incluye un **EQ animado** (`.eqbars`, 10 barras, animación CSS
+  `eqb` activada por la clase `.playing`) y **adaptación al tamaño** vía
+  `ResizeObserver` en `_watchSize()`/`_applySize()` que aplica `.hide-keys`,
+  `.tight`, `.roomy`. `getGridOptions()` define el tamaño en Sections view.
 
 ## Publicar
 - El remoto usa **HTTPS** (`https://github.com/Frank3e/cliamp-radio-card.git`) porque

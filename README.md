@@ -54,6 +54,16 @@ Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
 
 Los favoritos se guardan en el navegador (`localStorage`).
 
+## Estética y tamaño
+
+- **EQ animado**: barras que "bailan" cuando hay reproducción (se quedan
+  planas al pausar/parar). Respeta `prefers-reduced-motion`.
+- **Se adapta al hueco**: la tarjeta detecta su tamaño y oculta el pie de teclas,
+  compacta paddings o agranda el EQ según el espacio.
+- **Sections view**: `getGridOptions()` permite redimensionarla (por defecto 6 de
+  12 columnas × 6 filas; mínimo 3×3, máximo 12×12). Ajusta el tamaño desde el
+  editor del dashboard arrastrando las esquinas.
+
 ## Requisitos
 
 - Home Assistant 2024.2+.

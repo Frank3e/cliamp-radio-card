@@ -9,7 +9,7 @@
  * Playback targets any media_player (including Music Assistant players).
  */
 
-const CARD_VERSION = "0.2.1";
+const CARD_VERSION = "0.2.2";
 
 console.info(
   `%c CLIAMP·RADIO %c v${CARD_VERSION} `,
@@ -60,7 +60,7 @@ const esc = (s) =>
   );
 
 const STYLE = `
-:host { display:block; }
+:host { display:block; height:100%; }
 * { box-sizing:border-box; }
 .crt {
   --bg:#031222; --panel:#05182e; --panel2:#0a2540;
@@ -78,8 +78,12 @@ const STYLE = `
   font-variant-ligatures:none;
   box-shadow:0 1px 3px rgba(0,0,0,.4);
   user-select:none;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
 }
-.screen { display:flex; flex-direction:column; gap:2px; min-height:0; }
+.screen { display:flex; flex-direction:column; gap:2px; min-height:0; flex:1 1 auto; }
 .top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .brand { color:var(--green); font-weight:700; letter-spacing:.28em; }
 .tag { color:var(--muted); font-weight:700; }
@@ -104,6 +108,27 @@ const STYLE = `
 .eq .lbl { font-weight:700; }
 .eq .preset { color:var(--yellow); }
 .eq .playing { color:var(--green); }
+.eqbars { display:flex; align-items:flex-end; gap:3px; height:26px; margin:3px 0 1px; }
+.eqbars .bar { flex:1 1 0; height:100%; display:flex; align-items:flex-end; }
+.eqbars .bar i {
+  display:block; width:100%; height:100%; background:var(--green); border-radius:1px;
+  transform:scaleY(.16); transform-origin:bottom center; opacity:.9;
+}
+.eqbars.playing .bar > i { animation:eqb 900ms ease-in-out infinite; }
+.eqbars .bar:nth-child(1) > i { animation-delay:-880ms; animation-duration:820ms; }
+.eqbars .bar:nth-child(2) > i { animation-delay:-360ms; animation-duration:1040ms; }
+.eqbars .bar:nth-child(3) > i { animation-delay:-700ms; animation-duration:760ms; }
+.eqbars .bar:nth-child(4) > i { animation-delay:-260ms; animation-duration:1120ms; }
+.eqbars .bar:nth-child(5) > i { animation-delay:-560ms; animation-duration:820ms; }
+.eqbars .bar:nth-child(6) > i { animation-delay:-40ms;  animation-duration:980ms; }
+.eqbars .bar:nth-child(7) > i { animation-delay:-640ms; animation-duration:760ms; }
+.eqbars .bar:nth-child(8) > i { animation-delay:-180ms; animation-duration:1060ms; }
+.eqbars .bar:nth-child(9) > i { animation-delay:-500ms; animation-duration:880ms; }
+.eqbars .bar:nth-child(10) > i { animation-delay:-320ms; animation-duration:1200ms; }
+.eqbars .bar:nth-child(odd) > i { background:var(--yellow); }
+.eqbars .bar:nth-child(4n) > i { background:var(--cyan); }
+@keyframes eqb { 0%,100% { transform:scaleY(.14); } 50% { transform:scaleY(1); } }
+@media (prefers-reduced-motion:reduce) { .eqbars.playing .bar > i { animation:none; transform:scaleY(.5); } }
 .volwrap { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .volwrap .lbl { font-weight:700; }
 .volbar { color:var(--green); letter-spacing:-1px; }
@@ -149,7 +174,7 @@ const STYLE = `
   color:var(--cream); font:inherit; outline:none; padding:2px 0;
 }
 .search::placeholder { color:var(--muted); }
-.list { overflow:auto; min-height:140px; max-height:42vh; padding:2px 0; outline:none; }
+.list { flex:1 1 auto; overflow:auto; min-height:70px; padding:2px 0; outline:none; }
 .list::-webkit-scrollbar { width:8px; }
 .list::-webkit-scrollbar-thumb { background:var(--muted); border-radius:4px; }
 .row { display:flex; gap:6px; white-space:nowrap; cursor:pointer; padding:0 2px; border-radius:2px; }
@@ -174,7 +199,20 @@ kbd {
 .spd .lbl { color:var(--cream); font-weight:700; }
 .spd .val { color:var(--yellow); }
 .hint { color:var(--muted); }
+
+/* --- responsive / adaptable to the card size ----------------------------- */
+.crt.hide-keys .keys { display:none; }
+.crt.hide-keys .spd { display:none; }
+.crt.tight { font-size:12px; padding:8px 10px 6px; }
+.crt.tight .list { min-height:52px; }
+.crt.tight .eqbars { height:16px; }
+.crt.tight .transport button { min-width:38px; padding:7px 4px; font-size:14px; }
+.crt.tight .tabs button { padding:6px 8px; }
+.crt.roomy { font-size:13px; }
+.crt.roomy .list { min-height:120px; }
+.crt.roomy .eqbars { height:34px; }
 `;
+
 
 class CliampRadioCard extends HTMLElement {
   constructor() {
@@ -209,6 +247,17 @@ class CliampRadioCard extends HTMLElement {
 
   getCardSize() {
     return 9;
+  }
+
+  getGridOptions() {
+    return {
+      columns: 6,
+      rows: 6,
+      min_columns: 3,
+      min_rows: 3,
+      max_columns: 12,
+      max_rows: 12,
+    };
   }
 
   set hass(hass) {
@@ -260,9 +309,35 @@ class CliampRadioCard extends HTMLElement {
       this._renderOut();
       this._setSource(0);
       this._built = true;
+      this._watchSize();
     } catch (err) {
       this._fail(err);
     }
+  }
+
+  _watchSize() {
+    const apply = () => this._applySize();
+    apply();
+    if (typeof ResizeObserver !== "undefined") {
+      if (this._ro) this._ro.disconnect();
+      this._ro = new ResizeObserver(apply);
+      this._ro.observe(this);
+    } else if (window.addEventListener) {
+      window.addEventListener("resize", apply);
+    }
+  }
+
+  _applySize() {
+    const crt = this.shadowRoot.querySelector(".crt");
+    if (!crt) return;
+    const w = this.clientWidth || 0;
+    const h = this.clientHeight || 0;
+    const narrow = w > 0 && w < 380;
+    const tight = (w > 0 && w < 340) || (h > 0 && h < 250);
+    const roomy = w >= 560 && h >= 340;
+    crt.classList.toggle("hide-keys", narrow);
+    crt.classList.toggle("tight", tight);
+    crt.classList.toggle("roomy", roomy);
   }
 
   _fail(err) {
@@ -308,6 +383,7 @@ class CliampRadioCard extends HTMLElement {
               <span class="db" data-role="db">+0dB</span>
             </div>
           </div>
+          <div class="eqbars" data-role="eqbars"></div>
           <div class="outrow">
             <span class="outlbl">🔊 Altavoz</span>
             <select class="out" data-role="out" title="Elige dónde sonar"></select>
@@ -360,6 +436,13 @@ class CliampRadioCard extends HTMLElement {
           <div class="spd"><span class="lbl">SPD</span> <span class="val">[1x]</span></div>
         </div>
       </div>`;
+
+    const eqbars = this.shadowRoot.querySelector('[data-role="eqbars"]');
+    if (eqbars) {
+      let bars = "";
+      for (let i = 0; i < 10; i++) bars += '<span class="bar"><i></i></span>';
+      eqbars.innerHTML = bars;
+    }
   }
 
   _attachEvents() {
@@ -839,6 +922,8 @@ class CliampRadioCard extends HTMLElement {
     if (pp) pp.textContent = playing ? "❚❚" : "▶";
     const mbtn = this.shadowRoot.querySelector('[data-role="mbtn"]');
     if (mbtn) mbtn.textContent = a.is_volume_muted ? "🔇" : "🔊";
+    const eqbars = this.shadowRoot.querySelector('[data-role="eqbars"]');
+    if (eqbars) eqbars.classList.toggle("playing", playing);
 
     const eq = this.shadowRoot.querySelector('[data-role="eq"]');
     if (eq) {
