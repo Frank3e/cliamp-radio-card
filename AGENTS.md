@@ -10,7 +10,37 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   bg `#031222`, panel `#0a2540`, verde `#028391`, crema `#f6dcac`,
   amarillo `#e97b3c`, rojo `#f85525`, cian `#8cbfb8`, muted `#2a6b78`, accent `#faa968`.
 
-## Fuentes
+## Estado actual (v0.3.0)
+- Fuentes: Local (12 Omarchy), Search (radio-browser), Library (Music Assistant).
+- Altavoz: fila `🔊 Altavoz` (jugadores MA marcados `·MA`).
+- Pestañas de fuente táctiles + barra de transporte táctil (play/pausa, stop,
+  prev/next, mute, deslizador de volumen).
+- **EQ animado** de 10 barras (`.eqbars`), animación CSS `eqb`; por defecto
+  `eq_animate: always` (opciones `playing`/`off`).
+- **Tema claro/oscuro**: `theme:auto` sigue `hass.themes.darkMode` → fondo negro
+  de noche (`#000`) o blanco de día (`#fff`); `dark`/`light` lo fuerzan.
+- **Emisoras de Omarchy en desplegable** (`stations:dropdown`, por defecto) o
+  lista (`stations:list`).
+- **Editor visual** (`getConfigElement`): formulario en el editor del dashboard.
+- **Adaptación al tamaño**: `dense`, `hide_keys` + auto por `ResizeObserver`;
+  `getGridOptions()` para Sections view (6×6 por defecto, 3×3–12×12).
+- Ficheros: `dist/cliamp-radio-card.js` (todo el código), `test/`, `README.md`,
+  `hacs.json`, `info.md`, `AGENTS.md`.
+- Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0.
+
+## Ideas / pendientes (por si se retoma)
+- Botón "aleatorio"/shuffle real y repetir (hoy `[Shuffle]`/`[Repeat: Off]` son
+  solo estéticos).
+- Mostrar carátula/`entity_picture` del reproductor.
+- Filtro de emisoras por país/género en `Search`.
+- Recordar última emisora por altavoz.
+- Página/release en HACS: añadir `image`/`homeassistant` mínimos en `hacs.json`.
+
+## Cómo trabaja el usuario
+- Usa el dashboard en PC, **Echo Show** y una **Fire Tablet** (navegadores con
+  caché agresiva: recordar limpiar caché tras actualizar).
+- Prefiere poder configurar "a su gusto" desde el editor visual y que se adapte a
+  varias formas, con EQ animado visible.
 - `Local`: las 12 emisoras de Omarchy → `https://radio.cliamp.stream/<slug>/stream`
   (slugs: lofi, synthwave, edm, omarchy, ncs, ncs-house, ncs-dubstep, ncs-dnb, ncs-trap, ncs-phonk, ncs-pop, ncs-chill).
 - `Search`: `radio-browser.info` directo (CORS OK). Hosts: de1/de2/at1/nl1/fi1.api.radio-browser.info.
@@ -27,7 +57,8 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
 - Subir `CARD_VERSION` en cada cambio.
 - Verificar antes de subir:
   - `node --check dist/cliamp-radio-card.js`
-  - pruebas jsdom en `/tmp/opencode/card-test/test2.js` (25/25).
+  - pruebas jsdom: `cd test && npm install && npm test` (test2 + featcheck +
+    editorcheck + eqcheck). Antes vivían en `/tmp/opencode/card-test`; ahora en `test/`.
 - `this._built` debe ponerse a `true` al final de `_init()`; si no, la tarjeta se
   reconstruye en cada actualización de estado y pierde el estado.
 - La estética incluye un **EQ animado** (`.eqbars`, 10 barras, animación CSS
