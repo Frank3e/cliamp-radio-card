@@ -66,19 +66,22 @@ Los favoritos se guardan en el navegador (`localStorage`).
 Si la tarjeta no aparece en esos dispositivos:
 
 1. **Registra el recurso**: Ajustes → Paneles → ⋮ → Recursos →
-   `/hacsfiles/cliamp-radio-card/cliamp-radio-card.js` como **Módulo JavaScript**.
+   `/hacsfiles/cliamp-radio-card/cliamp-radio-card.js?hacstag=...` (tipo **Módulo**).
    (HACS suele añadirlo solo; si instalaste a mano, usa `/local/cliamp-radio-card.js`.)
-2. **Recarga de verdad**: en Silk/Fire borra caché o reinicia la app; un
-   `Ctrl+Shift+R` no basta en esos navegadores.
-2. Si aparece **"Custom element doesn't exist"**, el recurso no se cargó en ese
-   dispositivo (caché o recurso no registrado).
-3. Abre la **URL del recurso directamente** en el navegador del dispositivo:
-   - HACS: `http://TU_HA:8123/hacsfiles/cliamp-radio-card/cliamp-radio-card.js`
-   - Manual: `http://TU_HA:8123/local/cliamp-radio-card.js`
-
-   Si ves el código JS, el recurso llega bien. Si no, es un problema de acceso/caché.
-2. A partir de la v0.2.1, si hay un error de JavaScript, la tarjeta lo muestra en
-   **rojo dentro de la tarjeta**; envíame ese texto.
+2. **Abre esa URL en el navegador del propio dispositivo**. Si muestra el JS, el
+   recurso sirve y el problema es **caché** de ese dispositivo.
+3. **Borra la caché** (no basta `Ctrl+Shift+R`):
+   - App HA en Fire Tablet → *Restablecer caché de la interfaz*.
+   - Silk/Echo Show → borrar datos de navegación; Fully Kiosk → recargar/limpiar caché.
+   - Reinicia el dispositivo.
+4. Si persiste, carga el módulo globalmente en `configuration.yaml` y reinicia HA:
+   ```yaml
+   frontend:
+     extra_module_url:
+       - /hacsfiles/cliamp-radio-card/cliamp-radio-card.js
+   ```
+5. A partir de la v0.2.1, si hay un error de JavaScript, la tarjeta lo muestra en
+   **rojo dentro de la tarjeta**; ese texto es la pista.
 
 ## Licencia
 
