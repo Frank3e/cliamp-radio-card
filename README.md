@@ -35,10 +35,28 @@ Copia `dist/cliamp-radio-card.js` a `config/www/` y añade el recurso
 ```yaml
 type: custom:cliamp-radio-card
 entity: media_player.salon   # opcional: altavoz por defecto
+
+# Todas opcionales:
+theme: auto        # auto (sigue día/noche de HA) | dark (negro) | light (blanco)
+stations: dropdown # dropdown (menú desplegable de las 12 de Omarchy) | list
+show_eq: true      # mostrar el ecualizador animado
+hide_keys: false   # ocultar la leyenda de teclas
+dense: false       # formato compacto (más pequeño)
 ```
 
 Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
 **🔊 Altavoz** (los de Music Assistant aparecen marcados `·MA`).
+
+### Opciones
+
+| Opción       | Valores                | Por defecto | Qué hace                                              |
+| ------------ | ---------------------- | ----------- | ----------------------------------------------------- |
+| `entity`     | id de `media_player`   | autodetecta | Altavoz por defecto.                                   |
+| `theme`      | `auto` / `dark` / `light` | `auto`   | Fondo **negro** de noche o **blanco** de día (sigue a HA). |
+| `stations`   | `dropdown` / `list`    | `dropdown`  | Emisoras de Omarchy en un **menú desplegable** o como lista. |
+| `show_eq`    | `true` / `false`       | `true`      | Muestra/oculta el ecualizador animado.                 |
+| `hide_keys`  | `true` / `false`       | `false`     | Oculta la leyenda de atajos de teclado.                |
+| `dense`      | `true` / `false`       | `false`     | Formato compacto (útil en huecos pequeños).            |
 
 ## Uso
 
@@ -56,10 +74,16 @@ Los favoritos se guardan en el navegador (`localStorage`).
 
 ## Estética y tamaño
 
-- **EQ animado**: barras que "bailan" cuando hay reproducción (se quedan
-  planas al pausar/parar). Respeta `prefers-reduced-motion`.
-- **Se adapta al hueco**: la tarjeta detecta su tamaño y oculta el pie de teclas,
-  compacta paddings o agranda el EQ según el espacio.
+- **Tema claro/oscuro**: con `theme: auto` el fondo es **negro** de noche y
+  **blanco** de día (sigue el modo día/noche de Home Assistant). Se puede forzar
+  con `theme: dark` o `theme: light`.
+- **Emisoras en desplegable**: con `stations: dropdown` (por defecto) las 12
+  emisoras de Omarchy van en un menú desplegable más estilizado; con `list` se
+  muestran como lista.
+- **EQ animado**: barras que "bailan" cuando hay reproducción (planas al
+  pausar/parar). Respeta `prefers-reduced-motion`; se oculta con `show_eq: false`.
+- **Formas configurables**: `dense` (compacto) y `hide_keys` (sin pie de teclas)
+  además de la adaptación automática al hueco.
 - **Sections view**: `getGridOptions()` permite redimensionarla (por defecto 6 de
   12 columnas × 6 filas; mínimo 3×3, máximo 12×12). Ajusta el tamaño desde el
   editor del dashboard arrastrando las esquinas.

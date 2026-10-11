@@ -9,7 +9,7 @@
  * Playback targets any media_player (including Music Assistant players).
  */
 
-const CARD_VERSION = "0.2.2";
+const CARD_VERSION = "0.2.3";
 
 console.info(
   `%c CLIAMP·RADIO %c v${CARD_VERSION} `,
@@ -87,6 +87,14 @@ const STYLE = `
 .top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .brand { color:var(--green); font-weight:700; letter-spacing:.28em; }
 .tag { color:var(--muted); font-weight:700; }
+.crt.theme-dark { --bg:#000000; --panel:#0d0d0d; --panel2:#141414; --cream:#e9e6dd; --muted:#4a5b60; --sel:#1b2c2e; }
+.crt.theme-light {
+  --bg:#ffffff; --panel:#f1f2ef; --panel2:#e5e7e3; --cream:#14181c;
+  --muted:#98a5a3; --green:#027d78; --yellow:#c26a1f; --red:#c93a12;
+  --cyan:#3d8f89; --accent:#b8651f; --sel:#cfe3e0;
+  box-shadow:0 1px 3px rgba(0,0,0,.15);
+}
+.crt.no-eq .eqbars { display:none; }
 .outrow { display:flex; align-items:center; gap:8px; margin:2px 0; }
 .outrow .outlbl { color:var(--green); font-weight:700; white-space:nowrap; }
 .out {
@@ -241,7 +249,17 @@ class CliampRadioCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = Object.assign({ entity: "" }, config || {});
+    this._config = Object.assign(
+      {
+        entity: "",
+        theme: "auto", // auto | dark | light
+        stations: "dropdown", // dropdown | list  (fuente Local)
+        show_eq: true, // mostrar el ecualizador animado
+        hide_keys: false, // ocultar la leyenda de teclas
+        dense: false, // forzar formato compacto
+      },
+      config || {}
+    );
     if (this._hass) this._init();
   }
 
@@ -269,6 +287,22 @@ class CliampRadioCard extends HTMLElement {
     }
     this._renderOut();
     this._renderStatus();
+    this._applyTheme();
+  }
+
+  _isDark() {
+    const mode = this._config.theme;
+    if (mode === "dark") return true;
+    if (mode === "light") return false;
+    return !!(this._hass && this._hass.themes && this._hass.themes.darkMode);
+  }
+
+  _applyTheme() {
+    const crt = this.shadowRoot.querySelector(".crt");
+    if (!crt) return;
+    const dark = this._isDark();
+    crt.classList.toggle("theme-dark", dark);
+    crt.classList.toggle("theme-light", !dark);
   }
 
   // --- setup ---------------------------------------------------------------
@@ -308,6 +342,7 @@ class CliampRadioCard extends HTMLElement {
       this._attachEvents();
       this._renderOut();
       this._setSource(0);
+      this._applyTheme();
       this._built = true;
       this._watchSize();
     } catch (err) {
@@ -332,12 +367,15 @@ class CliampRadioCard extends HTMLElement {
     if (!crt) return;
     const w = this.clientWidth || 0;
     const h = this.clientHeight || 0;
-    const narrow = w > 0 && w < 380;
-    const tight = (w > 0 && w < 340) || (h > 0 && h < 250);
-    const roomy = w >= 560 && h >= 340;
-    crt.classList.toggle("hide-keys", narrow);
-    crt.classList.toggle("tight", tight);
-    crt.classList.toggle("roomy", roomy);
+    const cfg = this._config || {};
+    const autoNarrow = w > 0 && w < 300;
+    const autoTight = (w > 0 && w < 300) || (h > 0 && h < 230);
+    crt.classList.toggle("hide-keys", cfg.hide_keys === true || autoNarrow);
+    crt.classList.toggle("tight", cfg.dense === true || autoTight);
+    crt.classList.toggle("roomy", !cfg.dense && w >= 520 && h >= 320);
+    crt.classList.toggle("no-eq", cfg.show_eq === false);
+    const pick = this.shadowRoot.querySelector('[data-role="pickrow"]');
+    if (pick) this._renderPick();
   }
 
   _fail(err) {
@@ -397,6 +435,10 @@ class CliampRadioCard extends HTMLElement {
             </span>
           </div>
           <div class="tabs" data-role="tabs"></div>
+          <div class="outrow pickrow" data-role="pickrow" hidden>
+            <span class="outlbl">Emisora</span>
+            <select class="out" data-role="pick" title="Elige emisora de Omarchy"></select>
+          </div>
           <div class="plhead">
             <span class="head" data-role="plhead">▸─ Playlist ──</span>
             <span class="tags">
@@ -479,9 +521,15 @@ class CliampRadioCard extends HTMLElement {
     });
 
     this.shadowRoot.addEventListener("change", (ev) => {
-      if (ev.target.getAttribute("data-role") === "out") {
+      const role = ev.target.getAttribute("data-role");
+      if (role === "out") {
         this._entity = ev.target.value;
         this._renderStatus();
+        this._renderPick();
+      } else if (role === "pick") {
+        const id = ev.target.value;
+        const idx = this._items.findIndex((it) => it.media_id === id);
+        if (idx >= 0) this._select(idx, true);
       }
     });
 
@@ -844,7 +892,35 @@ class CliampRadioCard extends HTMLElement {
     this._renderSrc();
     this._renderTabs();
     this._renderStatus();
+    this._renderPick();
     this._renderList();
+  }
+
+  _isPick() {
+    return SOURCES[this._source].key === "local" && this._config.stations !== "list";
+  }
+
+  _renderPick() {
+    const row = this.shadowRoot.querySelector('[data-role="pickrow"]');
+    const sel = this.shadowRoot.querySelector('[data-role="pick"]');
+    const list = this.shadowRoot.querySelector('[data-role="list"]');
+    const head = this.shadowRoot.querySelector(".plhead");
+    const show = this._isPick();
+    if (row) row.hidden = !show;
+    if (list) list.hidden = show;
+    if (head) head.hidden = show;
+    if (!sel) return;
+    sel.disabled = !this._entity;
+    if (!show) return;
+    const st = this._state(this._entity);
+    const a = (st && st.attributes) || {};
+    const cur = a.media_content_id || a.media_title || this._title || "";
+    sel.innerHTML = this._items
+      .map((it) => {
+        const on = it.media_id === cur || it.title === cur || it.title === a.media_title;
+        return `<option value="${esc(it.media_id)}"${on ? " selected" : ""}>${esc(it.title)}</option>`;
+      })
+      .join("");
   }
 
   _renderTabs() {
@@ -924,6 +1000,8 @@ class CliampRadioCard extends HTMLElement {
     if (mbtn) mbtn.textContent = a.is_volume_muted ? "🔇" : "🔊";
     const eqbars = this.shadowRoot.querySelector('[data-role="eqbars"]');
     if (eqbars) eqbars.classList.toggle("playing", playing);
+
+    this._renderPick();
 
     const eq = this.shadowRoot.querySelector('[data-role="eq"]');
     if (eq) {
