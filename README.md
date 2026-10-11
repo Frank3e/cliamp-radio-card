@@ -37,16 +37,20 @@ type: custom:cliamp-radio-card
 entity: media_player.salon   # opcional: altavoz por defecto
 ```
 
-Sin `entity`, autodetecta todos los `media_player`; elige el altavoz con el
-desplegable de arriba a la derecha (los de Music Assistant aparecen marcados `·MA`).
+Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
+**🔊 Altavoz** (los de Music Assistant aparecen marcados `·MA`).
 
 ## Uso
 
-- **Clic** en una emisora/carpeta para reproducir o entrar.
-- **Buscador**: `SRC [Radio] 1/3 [Search]` → escribe y pulsa Enter.
+- **Selector de altavoz**: fila **🔊 Altavoz** (indica dónde sonará).
+- **Fuente**: pestañas **[Local] [Search] [Library]** (o `←`/`→`).
+- **Clic/táctil**: toca una emisora/carpeta para reproducir o entrar.
+- **Barra táctil**: `⏮` anterior · `▶/❚❚` reproducir/pausar · `⏹` parar ·
+  `⏭` siguiente · `🔊/🔇` silenciar · **deslizador de volumen**.
+- **Buscador**: pestaña **[Search]** → escribe y pulsa Enter.
 - **Teclado**: `↑↓` mover · `↵` reproducir · `Space` pausa · `/` buscar ·
-  `←→` cambiar de fuente · `n`/`p` siguiente/anterior · `f` favorito ·
-  `m` silenciar · `+`/`-` volumen · `x` parar · `Esc` atrás.
+  `←→` fuente · `n`/`p` siguiente/anterior · `f` favorito · `m` silenciar ·
+  `+`/`-` volumen · `x` parar · `Esc` atrás.
 
 Los favoritos se guardan en el navegador (`localStorage`).
 
@@ -56,6 +60,25 @@ Los favoritos se guardan en el navegador (`localStorage`).
 - Para la fuente **Library**, la integración **Music Assistant** y al menos un
   reproductor de MA. Las fuentes **Local** y **Search** funcionan con cualquier
   `media_player` (no necesitan la integración Radio Browser).
+
+## Solución de problemas (Echo Show / Fire Tablet)
+
+Si la tarjeta no aparece en esos dispositivos:
+
+1. **Registra el recurso**: Ajustes → Paneles → ⋮ → Recursos →
+   `/hacsfiles/cliamp-radio-card/cliamp-radio-card.js` como **Módulo JavaScript**.
+   (HACS suele añadirlo solo; si instalaste a mano, usa `/local/cliamp-radio-card.js`.)
+2. **Recarga de verdad**: en Silk/Fire borra caché o reinicia la app; un
+   `Ctrl+Shift+R` no basta en esos navegadores.
+2. Si aparece **"Custom element doesn't exist"**, el recurso no se cargó en ese
+   dispositivo (caché o recurso no registrado).
+3. Abre la **URL del recurso directamente** en el navegador del dispositivo:
+   - HACS: `http://TU_HA:8123/hacsfiles/cliamp-radio-card/cliamp-radio-card.js`
+   - Manual: `http://TU_HA:8123/local/cliamp-radio-card.js`
+
+   Si ves el código JS, el recurso llega bien. Si no, es un problema de acceso/caché.
+2. A partir de la v0.2.1, si hay un error de JavaScript, la tarjeta lo muestra en
+   **rojo dentro de la tarjeta**; envíame ese texto.
 
 ## Licencia
 

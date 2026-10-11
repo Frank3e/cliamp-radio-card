@@ -9,7 +9,7 @@
  * Playback targets any media_player (including Music Assistant players).
  */
 
-const CARD_VERSION = "0.2.0";
+const CARD_VERSION = "0.2.1";
 
 console.info(
   `%c CLIAMP·RADIO %c v${CARD_VERSION} `,
@@ -82,13 +82,16 @@ const STYLE = `
 .screen { display:flex; flex-direction:column; gap:2px; min-height:0; }
 .top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
 .brand { color:var(--green); font-weight:700; letter-spacing:.28em; }
+.tag { color:var(--muted); font-weight:700; }
+.outrow { display:flex; align-items:center; gap:8px; margin:2px 0; }
+.outrow .outlbl { color:var(--green); font-weight:700; white-space:nowrap; }
 .out {
-  background:transparent; color:var(--muted); border:0; font:inherit;
-  text-align:right; max-width:55%; cursor:pointer; outline:none;
-  -webkit-appearance:none; appearance:none; padding:0;
+  flex:1; min-width:0; background:var(--panel); color:var(--cream);
+  border:1px solid var(--muted); font:inherit; padding:7px 8px; border-radius:4px;
+  cursor:pointer; outline:none; -webkit-appearance:none; appearance:none;
 }
 .out option { background:var(--panel); color:var(--cream); }
-.out:hover { color:var(--cyan); }
+.out:hover { border-color:var(--green); color:var(--cyan); }
 .nowline { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
 .np { color:var(--yellow); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .np .art { color:var(--green); }
@@ -117,6 +120,23 @@ const STYLE = `
   background:transparent; border:0; color:var(--cream); font:inherit; cursor:pointer; padding:0 4px;
 }
 .volbtns button:hover { color:var(--accent); }
+.tabs { display:flex; gap:6px; flex-wrap:wrap; margin:2px 0; }
+.tabs button {
+  background:transparent; border:1px solid var(--muted); color:var(--cream);
+  font:inherit; padding:7px 10px; border-radius:4px; cursor:pointer; flex:1 1 auto;
+}
+.tabs button.on { border-color:var(--green); color:var(--green); font-weight:700; }
+.tabs button:hover { border-color:var(--cyan); color:var(--cyan); }
+.transport { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:2px 0; }
+.transport button {
+  background:transparent; border:1px solid var(--muted); color:var(--cream);
+  font:inherit; font-size:15px; min-width:44px; padding:8px 6px; border-radius:4px;
+  cursor:pointer; line-height:1;
+}
+.transport button.big { font-size:18px; min-width:56px; }
+.transport button:hover { border-color:var(--green); color:var(--accent); }
+.transport button:active { background:var(--sel); }
+.vslide { flex:1 1 80px; min-width:70px; accent-color:var(--green); height:24px; }
 .plhead { display:flex; justify-content:space-between; gap:8px; align-items:baseline; color:var(--yellow); font-weight:700; margin-top:2px; }
 .plhead .tags { color:var(--muted); font-weight:400; }
 .plhead .tags b { color:var(--yellow); font-weight:700; }
@@ -231,13 +251,33 @@ class CliampRadioCard extends HTMLElement {
   }
 
   _init() {
-    this._entity = this._config.entity || this._firstPlayer();
-    this._source = 0;
-    this._index = 0;
-    this._buildSkeleton();
-    this._attachEvents();
-    this._renderOut();
-    this._setSource(0);
+    try {
+      this._entity = this._config.entity || this._firstPlayer();
+      this._source = 0;
+      this._index = 0;
+      this._buildSkeleton();
+      this._attachEvents();
+      this._renderOut();
+      this._setSource(0);
+      this._built = true;
+    } catch (err) {
+      this._fail(err);
+    }
+  }
+
+  _fail(err) {
+    if (window.console && console.error) console.error("cliamp-radio-card:", err);
+    this._built = true;
+    try {
+      const msg = err && err.message ? err.message : String(err);
+      this.shadowRoot.innerHTML =
+        `<div style="padding:12px;background:#031222;color:#f85525;` +
+        `font:13px/1.5 monospace;border:1px solid #2a6b78;border-radius:4px">` +
+        `<b style="color:#028391">C L I A M P</b> — error en la tarjeta<br>` +
+        `<span style="color:#f6dcac">${esc(msg)}</span></div>`;
+    } catch (e) {
+      /* ignore */
+    }
   }
 
   _firstPlayer() {
@@ -252,7 +292,7 @@ class CliampRadioCard extends HTMLElement {
         <div class="screen">
           <div class="top">
             <div class="brand">C L I A M P</div>
-            <select class="out" data-role="out" title="Playback target"></select>
+            <div class="tag" data-role="srtag">[Radio]</div>
           </div>
           <div class="nowline">
             <span class="np" data-role="np"><span class="art">♫</span> —</span>
@@ -268,14 +308,19 @@ class CliampRadioCard extends HTMLElement {
               <span class="db" data-role="db">+0dB</span>
             </div>
           </div>
+          <div class="outrow">
+            <span class="outlbl">🔊 Altavoz</span>
+            <select class="out" data-role="out" title="Elige dónde sonar"></select>
+          </div>
           <div class="srcrow">
             <button class="src" data-role="src" data-act="src"></button>
             <span class="volbtns">
               <button data-act="voldn" title="Bajar volumen">−</button>
               <button data-act="volup" title="Subir volumen">+</button>
               <button data-act="mute" title="Silenciar">mute</button>
-            </div>
+            </span>
           </div>
+          <div class="tabs" data-role="tabs"></div>
           <div class="plhead">
             <span class="head" data-role="plhead">▸─ Playlist ──</span>
             <span class="tags">
@@ -292,6 +337,15 @@ class CliampRadioCard extends HTMLElement {
           <div class="list" data-role="list" tabindex="-1"></div>
           <div class="status" data-role="status"></div>
           <div class="sep" data-role="sep2"></div>
+          <div class="transport">
+            <button data-act="prev" title="Anterior">⏮</button>
+            <button class="big" data-act="pp" data-role="pp" title="Reproducir / Pausar">▶</button>
+            <button data-act="stop" title="Parar">⏹</button>
+            <button data-act="next" title="Siguiente">⏭</button>
+            <button data-act="mute" data-role="mbtn" title="Silenciar">🔊</button>
+            <input class="vslide" data-role="vol" type="range" min="0" max="1" step="0.01"
+                   title="Volumen" aria-label="Volumen" />
+          </div>
           <div class="keys">
             <span><kbd>↑↓</kbd> <span class="txt">Move</span></span>
             <span><kbd>↵</kbd> <span class="txt">Play</span></span>
@@ -329,6 +383,15 @@ class CliampRadioCard extends HTMLElement {
       if (row) {
         const i = Number(row.getAttribute("data-idx"));
         if (!Number.isNaN(i)) this._select(i, true);
+        return;
+      }
+      const tab = ev.target.closest("[data-tab]");
+      if (tab) this._setSource(Number(tab.getAttribute("data-tab")));
+    });
+
+    this.shadowRoot.addEventListener("input", (ev) => {
+      if (ev.target.getAttribute("data-role") === "vol") {
+        this._volSet(parseFloat(ev.target.value));
       }
     });
 
@@ -397,7 +460,7 @@ class CliampRadioCard extends HTMLElement {
         this._loadMass(null);
       }
     }
-    this._renderSrc();
+    this._renderTabs();
     this._renderOut();
   }
 
@@ -696,8 +759,22 @@ class CliampRadioCard extends HTMLElement {
 
   _render() {
     this._renderSrc();
+    this._renderTabs();
     this._renderStatus();
     this._renderList();
+  }
+
+  _renderTabs() {
+    const wrap = this.shadowRoot.querySelector('[data-role="tabs"]');
+    if (wrap) {
+      wrap.innerHTML = SOURCES.map(
+        (s, i) =>
+          `<button data-tab="${i}" class="${i === this._source ? "on" : ""}">` +
+          `${esc(s.tabName || s.label)}</button>`
+      ).join("");
+    }
+    const tag = this.shadowRoot.querySelector('[data-role="srtag"]');
+    if (tag) tag.textContent = `[${SOURCES[this._source].label}]`;
   }
 
   _renderSrc() {
@@ -758,6 +835,11 @@ class CliampRadioCard extends HTMLElement {
       stEl.classList.toggle("playing", playing);
     }
 
+    const pp = this.shadowRoot.querySelector('[data-role="pp"]');
+    if (pp) pp.textContent = playing ? "❚❚" : "▶";
+    const mbtn = this.shadowRoot.querySelector('[data-role="mbtn"]');
+    if (mbtn) mbtn.textContent = a.is_volume_muted ? "🔇" : "🔊";
+
     const eq = this.shadowRoot.querySelector('[data-role="eq"]');
     if (eq) {
       eq.innerHTML =
@@ -787,6 +869,23 @@ class CliampRadioCard extends HTMLElement {
       const muted = a.is_volume_muted ? " (muted)" : "";
       db.textContent = `${dbf > 0 ? "+" : ""}${dbf}dB${muted}`;
     }
+    const slide = this.shadowRoot.querySelector('[data-role="vol"]');
+    if (slide && this.shadowRoot.activeElement !== slide) {
+      slide.value = String(vol);
+    }
+  }
+
+  _volSet(v) {
+    if (!this._entity || typeof v !== "number" || Number.isNaN(v)) return;
+    const val = Math.max(0, Math.min(1, v));
+    this._hass.callService(
+      "media_player",
+      "volume_set",
+      { volume_level: val },
+      { entity_id: this._entity }
+    );
+    if (this._volTimer) clearTimeout(this._volTimer);
+    this._volTimer = setTimeout(() => this._renderVol(), 500);
   }
 
   _renderPlayhead() {
