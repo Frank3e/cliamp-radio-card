@@ -1,95 +1,61 @@
 # Cliamp Radio Card
 
-Una tarjeta de radio para Home Assistant con la estética retro de terminal de
-[cliamp](https://github.com/bjarneo/cliamp)/Winamp: fondo CRT, verde fosforescente,
-scanlines, ecualizador animado y navegación por teclado o ratón.
+Una tarjeta de radio para Home Assistant con el aspecto exacto de
+[cliamp](https://github.com/bjarneo/cliamp), el reproductor de música de terminal
+de Omarchy (inspirado en Winamp 2.x): fondo de terminal, tipografía monoespaciada,
+`C L I A M P`, EQ/VOL, barra `SRC`, playlist numerada y pie de teclas.
 
-Las emisoras vienen de la integración **Radio Browser** de Home Assistant (el mismo
-directorio que usa cliamp) y se reproducen en cualquier `media_player`
-(altavoz de cada habitación).
+Trae las **12 emisoras de Omarchy que vienen con cliamp**, un **buscador** de
+cualquier emisora de `radio-browser.info`, y navegación de tu **biblioteca de
+Music Assistant**. Reproduce en cualquier `media_player` (incluidos los de
+Music Assistant).
 
-## Requisitos
+## Fuentes (se cambian con ←/→ o clic en `SRC`)
 
-1. **Home Assistant** 2024.2 o superior.
-2. La integración **Radio Browser** instalada:
-   *Ajustes → Dispositivos y servicios → Añadir integración → Radio Browser*.
-   (Es la fuente de las emisoras; la tarjeta la usa vía `media_source`.)
-- Al menos un reproductor (`media_player.*`): Sonos, Chromecast, Google Home,
-  Music Assistant, etc.
+| SRC                  | Qué muestra                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `[Radio] [Local]`    | Las 12 emisoras de Omarchy/cliamp (NCS, Lofi, Synthwave, Omarchy…). |
+| `[Radio] [Search]`   | Buscador en `radio-browser.info` (cualquier emisora del mundo).     |
+| `[MusicAssistant] [Library]` | Tu biblioteca de Music Assistant (radio, álbumes, artistas…).|
 
 ## Instalación con HACS
 
-1. Sube esta carpeta a un repositorio de GitHub (por ejemplo `cliamp-radio-card`).
-   El archivo de la tarjeta debe estar en `dist/cliamp-radio-card.js` (ya lo está).
-2. En Home Assistant: **HACS → ⋮ → Custom repositories**.
-   - URL: la URL de tu repositorio.
-   - Category: **Dashboard`.
-4. Busca "Cliamp Radio Card" en HACS y pulsa **Download**.
-5. Recarga el navegador (Ctrl+Shift+R). HACS registra el recurso automáticamente.
+1. Sube el repo a GitHub (el JS está en `dist/cliamp-radio-card.js`).
+2. **HACS → ⋮ → Custom repositories** → URL del repo, categoría **Dashboard** → Add.
+3. Busca "Cliamp Radio Card" → **Download**.
+4. Recarga el navegador (Ctrl+Shift+R). HACS registra el recurso solo.
 
-### Instalación manual (sin HACS)
+### Manual
 
-1. Copia `dist/cliamp-radio-card.js` a `config/www/` de tu Home Assistant.
-2. Ajustes → Paneles → ... → **Recursos** → Añadir recurso:
-   - URL: `/local/cliamp-radio-card.js`
-   - Tipo: **Módulo JavaScript**.
+Copia `dist/cliamp-radio-card.js` a `config/www/` y añade el recurso
+`/local/cliamp-radio-card.js` como **Módulo JavaScript**.
 
 ## Configuración
 
-Añade la tarjeta a cada panel de habitación. Como mínimo, indica el altavoz de esa
-habitación con `entity`:
-
 ```yaml
 type: custom:cliamp-radio-card
-entity: media_player.salon
+entity: media_player.salon   # opcional: altavoz por defecto
 ```
 
-Si **no** indicas `entity`, la tarjeta autodetecta todos los `media_player` y usa el
-primero; puedes cambiarlo con el desplegable de la cabecera.
-
-### Opciones
-
-| Opción          | Tipo    | Por defecto | Descripción                                                        |
-| --------------- | ------- | ----------- | ------------------------------------------------------------------ |
-| `entity`        | string  | auto        | `media_player` destino (el altavoz de la habitación).              |
-| `default_view`  | string  | `popular`   | Vista inicial: `popular`, `local`, `category`, `language`.         |
-| `show_spectrum` | boolean | `true`      | Muestra el ecualizador animado.                                    |
-
-Ejemplo con varias opciones:
-
-```yaml
-type: custom:cliamp-radio-card
-entity: media_player.cocina
-default_view: local
-show_spectrum: true
-```
+Sin `entity`, autodetecta todos los `media_player`; elige el altavoz con el
+desplegable de arriba a la derecha (los de Music Assistant aparecen marcados `·MA`).
 
 ## Uso
 
-- **Clic** en una emisora para reproducirla en el altavoz de la habitación.
-- **▸** = carpeta (Popular, por categoría, por idioma, por país, locales…). Clic para
-  entrar; **◀** o **⌫** para volver; **⌂** vuelve a Popular.
-- **Buscar**: escribe en el campo de búsqueda y pulsa Enter (busca en Radio Browser).
-- **Transporte**: ⏮ emisora anterior · ▶/⏸ play/pausa · ⏹ parar · ⏭ siguiente emisora · 🔇 mute · volumen.
-- **Teclado**: `↑`/`↓` (o `j`/`k`) navegar · `Enter` reproducir · `Espacio` play/pausa ·
-  `/` buscar · `n`/`p` siguiente/anterior · `x` parar · `m` mute · `⌫` atrás.
+- **Clic** en una emisora/carpeta para reproducir o entrar.
+- **Buscador**: `SRC [Radio] 1/3 [Search]` → escribe y pulsa Enter.
+- **Teclado**: `↑↓` mover · `↵` reproducir · `Space` pausa · `/` buscar ·
+  `←→` cambiar de fuente · `n`/`p` siguiente/anterior · `f` favorito ·
+  `m` silenciar · `+`/`-` volumen · `x` parar · `Esc` atrás.
 
-La reproducción usa `media_player.play_media` con
-`media_content_id: media-source://radio_browser/<uuid>`, que Home Assistant resuelve
-al stream real (y registra el "click" en el directorio Radio Browser).
+Los favoritos se guardan en el navegador (`localStorage`).
 
-## Requisitos de la integración Radio Browser
+## Requisitos
 
-La tarjeta necesita que la integración **Radio Browser** esté instalada y cargada.
-Si no lo está verás un aviso en la propia tarjeta indicando cómo instalarla.
-
-## Problemas
-
-- **"Radio Browser integration not found"** → instálala (Ajustes → Dispositivos y
-  servicios → Añadir integración → Radio Browser) y recarga.
-- **No suena pero la emisora se marca** → tu `media_player` no soporta ese stream
-  (códec). Prueba otra emisora o revisa el reproductor.
-- **Aparece "no media_player"** → no hay ningún `media_player` o pon `entity:`.
+- Home Assistant 2024.2+.
+- Para la fuente **Library**, la integración **Music Assistant** y al menos un
+  reproductor de MA. Las fuentes **Local** y **Search** funcionan con cualquier
+  `media_player` (no necesitan la integración Radio Browser).
 
 ## Licencia
 

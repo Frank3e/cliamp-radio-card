@@ -1,160 +1,208 @@
-/*
- * cliamp-radio-card — retro terminal radio for Home Assistant.
- * Stations: "Radio Browser" integration media source.
- * Playback target: any media_player (auto-detected, or set `entity:`).
+/* Cliamp Radio Card
+ * A Home Assistant Lovelace card that looks and feels like cliamp
+ * (the Omarchy terminal music player, inspired by Winamp 2.x).
+ *
+ * Sources:  [Local] = the 12 built-in Omarchy/cliamp stations
+ *           [Radio] = radio-browser.info search (direct, CORS enabled)
+ *           [Music Assistant] = browse your Music Assistant library
+ *
+ * Playback targets any media_player (including Music Assistant players).
  */
 
-const CARD_VERSION = "0.1.0";
-const RADIO_ROOT = "media-source://radio_browser";
-const RADIO_VIEWS = {
-  popular: "media-source://radio_browser/popular",
-  local: "media-source://radio_browser/local",
-  category: "media-source://radio_browser/tag",
-  language: "media-source://radio_browser/language",
-};
-
-const VIEW_LABEL = {
-  popular: "Popular",
-  local: "Local stations",
-  category: "By Category",
-  language: "By Language",
-};
+const CARD_VERSION = "0.2.0";
 
 console.info(
   `%c CLIAMP·RADIO %c v${CARD_VERSION} `,
-  "color:#04110a;background:#37f59a;font-weight:700",
-  "color:#37f59a;background:#04110a"
+  "background:#028391;color:#031222;font-weight:bold;border-radius:3px 0 0 3px;padding:2px 4px",
+  "background:#faa968;color:#031222;font-weight:bold;border-radius:0 3px 3px 0;padding:2px 4px"
 );
 
-function esc(value) {
-  return String(value == null ? "" : value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+const OMARCHY_STATIONS = [
+  { title: "Lofi Stream", slug: "lofi" },
+  { title: "Synthwave Stream", slug: "synthwave" },
+  { title: "EDM Stream", slug: "edm" },
+  { title: "Omarchy Radio", slug: "omarchy" },
+  { title: "NCS Stream", slug: "ncs" },
+  { title: "NCS House Stream", slug: "ncs-house" },
+  { title: "NCS Dubstep Stream", slug: "ncs-dubstep" },
+  { title: "NCS Drum & Bass Stream", slug: "ncs-dnb" },
+  { title: "NCS Trap Stream", slug: "ncs-trap" },
+  { title: "NCS Phonk Stream", slug: "ncs-phonk" },
+  { title: "NCS Pop Stream", slug: "ncs-pop" },
+  { title: "NCS Chill Stream", slug: "ncs-chill" },
+].map((s) => ({
+  title: s.title,
+  media_id: `https://radio.cliamp.stream/${s.slug}/stream`,
+  media_type: "music",
+}));
+
+const RB_HOSTS = [
+  "de1.api.radio-browser.info",
+  "de2.api.radio-browser.info",
+  "at1.api.radio-browser.info",
+  "nl1.api.radio-browser.info",
+  "fi1.api.radio-browser.info",
+];
+const RB_LIMIT = 80;
+
+const SOURCES = [
+  { key: "local", provider: "Radio", label: "Local" },
+  { key: "search", provider: "Radio", label: "Search" },
+  { key: "mass", provider: "MusicAssistant", label: "Library" },
+];
+
+const MASS_TYPES = ["artist", "album", "audiobook", "folder", "playlist", "podcast", "track", "radio"];
+
+const esc = (s) =>
+  String(s == null ? "" : s).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
 
 const STYLE = `
 :host { display:block; }
-.crt{
-  position:relative;color:#bff5d7;font-size:13px;line-height:1.35;
-  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
-  background:radial-gradient(120% 140% at 50% 0%, #0b1a12 0%, #04110a 60%, #020906 100%);
-  border:1px solid #1d5b3d;border-radius:10px;padding:10px 12px;
-  box-shadow:inset 0 0 60px rgba(0,255,150,.06),0 0 0 1px rgba(0,255,150,.05);
-  overflow:hidden;
+* { box-sizing:border-box; }
+.crt {
+  --bg:#031222; --panel:#05182e; --panel2:#0a2540;
+  --green:#028391; --cream:#f6dcac; --yellow:#e97b3c; --red:#f85525;
+  --cyan:#8cbfb8; --muted:#2a6b78; --sel:#134e5a; --accent:#faa968;
+  font-family:"JetBrainsMono Nerd Font","JetBrains Mono","Cascadia Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--bg);
+  color:var(--cream);
+  border:1px solid var(--muted);
+  border-radius:4px;
+  padding:10px 12px 8px;
+  font-size:13px;
+  line-height:1.5;
+  letter-spacing:0.01em;
+  font-variant-ligatures:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  user-select:none;
 }
-.crt::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:multiply;
-  background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.18) 3px);}
-:host(:focus){outline:none;}
-:host(:focus-visible) .crt{border-color:#37f59a;}
-.titlebar{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid rgba(55,245,154,.25);margin-bottom:8px;}
-.logo{color:#37f59a;font-weight:700;letter-spacing:1px;text-shadow:0 0 6px rgba(55,245,154,.55);}
-.spacer{flex:1;}
-.src{background:#061a10;color:#bff5d7;border:1px solid #1d5b3d;border-radius:6px;padding:3px 6px;font:inherit;max-width:48%;}
-.conn{color:#37f59a;}
-.conn.off{color:#ff5b5b;}
-.now{display:flex;gap:10px;padding:8px 10px;border:1px solid rgba(55,245,154,.22);border-radius:8px;background:rgba(0,255,150,.03);min-height:54px;align-items:center;}
-.now .art{width:42px;height:42px;flex:0 0 42px;border:1px solid rgba(55,245,154,.3);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#37f59a;font-size:20px;background:#06180f;}
-.now .meta{flex:1;min-width:0;}
-.now .st{color:#37f59a;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.now .sub{opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.spectrum{display:flex;align-items:flex-end;gap:2px;height:34px;margin:8px 0;}
-.spectrum i{flex:1;height:6%;background:linear-gradient(to top,#0f3d27,#37f59a);border-radius:2px;opacity:.85;}
-.spectrum.playing i{animation:eq var(--d) ease-in-out infinite alternate;}
-@keyframes eq{from{height:6%;}to{height:var(--h);}}
-.navbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.ctl{background:#061a10;color:#bff5d7;border:1px solid #1d5b3d;border-radius:6px;padding:3px 8px;font:inherit;cursor:pointer;}
-.ctl:disabled{opacity:.35;cursor:default;}
-.ctl:hover:not(:disabled){background:#0a2a19;}
-.search{flex:1;background:#061a10;color:#bff5d7;border:1px solid #1d5b3d;border-radius:6px;padding:4px 8px;font:inherit;min-width:60px;}
-.search::placeholder{color:rgba(191,245,215,.4);}
-.crumb{opacity:.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%;}
-.list{outline:none;border:1px solid rgba(55,245,154,.22);border-radius:8px;overflow-y:auto;max-height:340px;}
-.row{display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;white-space:nowrap;border-bottom:1px solid rgba(55,245,154,.06);}
-.row:last-child{border-bottom:none;}
-.row .glyph{color:#37f59a;width:14px;flex:0 0 14px;}
-.row .name{flex:1;overflow:hidden;text-overflow:ellipsis;}
-.row:hover{background:rgba(55,245,154,.08);}
-.row.sel{background:rgba(55,245,154,.16);box-shadow:inset 3px 0 0 #37f59a;}
-.row.dir .glyph{color:#ffc24b;}
-.row.playing .name{color:#37f59a;font-weight:700;}
-.status{min-height:16px;margin-top:8px;opacity:.75;white-space:pre-wrap;font-size:12px;}
-.status .err{color:#ff8a8a;}
-.status .load{color:#ffc24b;}
-.controls{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap;}
-.controls .btn{min-width:34px;text-align:center;}
-.controls input[type=range]{flex:1;min-width:90px;accent-color:#37f59a;}
-.hint{opacity:.4;font-size:11px;margin-top:6px;}
+.screen { display:flex; flex-direction:column; gap:2px; min-height:0; }
+.top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.brand { color:var(--green); font-weight:700; letter-spacing:.28em; }
+.out {
+  background:transparent; color:var(--muted); border:0; font:inherit;
+  text-align:right; max-width:55%; cursor:pointer; outline:none;
+  -webkit-appearance:none; appearance:none; padding:0;
+}
+.out option { background:var(--panel); color:var(--cream); }
+.out:hover { color:var(--cyan); }
+.nowline { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.np { color:var(--yellow); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.np .art { color:var(--green); }
+.state { color:var(--cream); white-space:nowrap; font-size:12px; }
+.state.playing { color:var(--green); }
+.time { color:var(--cream); font-size:12px; }
+.sep { color:var(--muted); overflow:hidden; white-space:nowrap; height:14px; line-height:14px; }
+.eqrow { display:flex; justify-content:space-between; gap:10px; align-items:baseline; flex-wrap:wrap; }
+.eq { color:var(--cream); white-space:nowrap; overflow:hidden; }
+.eq .lbl { font-weight:700; }
+.eq .preset { color:var(--yellow); }
+.eq .playing { color:var(--green); }
+.volwrap { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+.volwrap .lbl { font-weight:700; }
+.volbar { color:var(--green); letter-spacing:-1px; }
+.volbar .off { color:var(--muted); }
+.db { color:var(--muted); font-size:12px; }
+.srcrow { display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.src { background:transparent; border:0; color:var(--cream); font:inherit; cursor:pointer; padding:0; text-align:left; }
+.src:hover { color:var(--cyan); }
+.src .lbl { font-weight:700; }
+.src .prov { color:var(--yellow); }
+.src .cur { color:var(--yellow); font-weight:700; }
+.volbtns { color:var(--muted); font-size:12px; white-space:nowrap; }
+.volbtns button {
+  background:transparent; border:0; color:var(--cream); font:inherit; cursor:pointer; padding:0 4px;
+}
+.volbtns button:hover { color:var(--accent); }
+.plhead { display:flex; justify-content:space-between; gap:8px; align-items:baseline; color:var(--yellow); font-weight:700; margin-top:2px; }
+.plhead .tags { color:var(--muted); font-weight:400; }
+.plhead .tags b { color:var(--yellow); font-weight:700; }
+.plhead .fav { color:var(--red); font-weight:700; }
+.plhead .cur { color:var(--yellow); font-weight:700; }
+.searchwrap { display:flex; align-items:center; gap:6px; color:var(--muted); }
+.searchwrap .prompt { color:var(--yellow); font-weight:700; }
+.search {
+  flex:1; background:transparent; border:0; border-bottom:1px solid var(--muted);
+  color:var(--cream); font:inherit; outline:none; padding:2px 0;
+}
+.search::placeholder { color:var(--muted); }
+.list { overflow:auto; min-height:140px; max-height:42vh; padding:2px 0; outline:none; }
+.list::-webkit-scrollbar { width:8px; }
+.list::-webkit-scrollbar-thumb { background:var(--muted); border-radius:4px; }
+.row { display:flex; gap:6px; white-space:nowrap; cursor:pointer; padding:0 2px; border-radius:2px; }
+.row .cur { color:var(--green); }
+.row .num { color:var(--muted); }
+.row .fav { color:var(--red); }
+.row .name { color:var(--cream); overflow:hidden; text-overflow:ellipsis; }
+.row .hint { color:var(--muted); }
+.row.selected { background:var(--sel); }
+.row.selected .name { color:var(--yellow); }
+.row.playing .name { color:var(--green); }
+.empty { color:var(--muted); padding:6px 2px; }
+.status { min-height:16px; color:var(--red); font-size:12px; }
+.sep2 { margin-top:4px; }
+.keys { color:var(--muted); display:flex; flex-wrap:wrap; gap:2px 8px; font-size:12px; }
+kbd {
+  background:var(--muted); color:var(--cream); border-radius:3px; padding:1px 5px;
+  font-family:inherit; font-weight:700; font-size:11px;
+}
+.keys .txt { color:var(--cream); }
+.spd { color:var(--muted); font-size:12px; margin-top:2px; }
+.spd .lbl { color:var(--cream); font-weight:700; }
+.spd .val { color:var(--yellow); }
+.hint { color:var(--muted); }
 `;
 
 class CliampRadioCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._config = null;
+    this._config = {};
     this._hass = null;
     this._built = false;
-    this._loading = false;
-    this._error = "";
+    this._entity = "";
+    this._source = 0;
     this._items = [];
     this._index = 0;
-    this._stack = [];
-    this._currentId = "";
-    this._title = "";
+    this._query = "";
+    this._title = "Playlist";
+    this._error = "";
+    this._loading = false;
+    this._lastStation = "";
     this._playingId = "";
-    this._entity = "";
-    this._npSig = "";
+    this._massStack = [];
     this._volBusy = false;
+    this._favs = this._loadFavs();
   }
 
   static getStubConfig() {
-    return { entity: "", default_view: "popular" };
+    return { entity: "" };
   }
 
   setConfig(config) {
-    this._config = Object.assign(
-      { entity: "", default_view: "popular", show_spectrum: true },
-      config || {}
-    );
-    if (this._config.default_view && !RADIO_VIEWS[this._config.default_view]) {
-      this._config.default_view = "popular";
-    }
+    this._config = Object.assign({ entity: "" }, config || {});
     if (this._hass) this._init();
   }
 
   getCardSize() {
-    return 7;
+    return 9;
   }
 
   set hass(hass) {
     this._hass = hass;
     if (!this._built) {
-      if (!this._config) return;
+      if (!this._config || !this._hass) return;
       this._init();
       return;
     }
-    this._renderEntityOptions();
-    this._renderNowPlaying();
+    this._renderOut();
+    this._renderStatus();
   }
 
-  // --- init / entities ---------------------------------------------------
-
-  _init() {
-    this._entity = this._config.entity || this._firstPlayer();
-    this._buildSkeleton();
-    this._attachEvents();
-    this._renderEntityOptions();
-    this._renderNowPlaying();
-    const view = this._config.default_view;
-    this._loadView(RADIO_VIEWS[view], VIEW_LABEL[view]);
-  }
-
-  _firstPlayer() {
-    const players = this._players();
-    return players.length ? players[0] : "";
-  }
+  // --- setup ---------------------------------------------------------------
 
   _players() {
     if (!this._hass) return [];
@@ -163,452 +211,645 @@ class CliampRadioCard extends HTMLElement {
       .sort((a, b) => this._friendly(a).localeCompare(this._friendly(b)));
   }
 
-  _friendly(entityId) {
-    const st = this._hass && this._hass.states[entityId];
-    return (st && st.attributes && st.attributes.friendly_name) || entityId;
+  _massPlayers() {
+    return this._players().filter((e) => this._isMass(e));
   }
 
-  _state(entityId) {
-    return this._hass && this._hass.states[entityId];
+  _isMass(id) {
+    const st = this._state(id);
+    const a = st && st.attributes ? st.attributes : {};
+    return !!(a.mass_player_id || a.mass_player_type || a.mass_queue_id || a.player_id);
   }
 
-  _isMuted() {
-    const st = this._state(this._entity);
-    return !!(st && st.attributes && st.attributes.is_volume_muted);
+  _friendly(id) {
+    const st = this._state(id);
+    return (st && st.attributes && st.attributes.friendly_name) || id || "—";
   }
 
-  // --- data --------------------------------------------------------------
-
-  async _loadView(contentId, title) {
-    this._loading = true;
-    this._error = "";
-    this._currentId = contentId;
-    this._setSearchValue("");
-    this._renderStatus();
-    try {
-      const res = await this._hass.callWS({
-        type: "media_source/browse_media",
-        media_content_id: contentId,
-      });
-      this._items = res.children || [];
-      this._title = title || res.title || "Radio";
-      this._index = 0;
-    } catch (err) {
-      this._error = this._humanError(err);
-      this._items = [];
-    }
-    this._loading = false;
-    this._renderList();
-    this._renderStatus();
-    this._renderNav();
+  _state(id) {
+    return this._hass && this._hass.states ? this._hass.states[id] : null;
   }
 
-  async _search(query) {
-    if (!query) {
-      const view = this._config.default_view;
-      this._stack = [];
-      this._loadView(RADIO_VIEWS[view], VIEW_LABEL[view]);
-      return;
-    }
-    this._loading = true;
-    this._error = "";
-    this._renderStatus();
-    try {
-      const res = await this._hass.callWS({
-        type: "media_source/search_media",
-        media_content_id: RADIO_ROOT,
-        search_query: query,
-        media_filter_classes: ["music"],
-      });
-      const result = res.result;
-      this._items = Array.isArray(result) ? result : (result && result.children) || [];
-      this._title = "Search: " + query;
-      this._stack = [];
-      this._currentId = RADIO_ROOT;
-      this._index = 0;
-    } catch (err) {
-      this._error = this._humanError(err);
-      this._items = [];
-    }
-    this._loading = false;
-    this._renderList();
-    this._renderStatus();
-    this._renderNav();
+  _init() {
+    this._entity = this._config.entity || this._firstPlayer();
+    this._source = 0;
+    this._index = 0;
+    this._buildSkeleton();
+    this._attachEvents();
+    this._renderOut();
+    this._setSource(0);
   }
 
-  _humanError(err) {
-    const msg = (err && (err.message || err.error || err.code)) || String(err);
-    if (/unknown_media_source/i.test(msg)) {
-      return "Radio Browser integration not found.\nSettings → Devices & Services → Add Integration → Radio Browser.";
-    }
-    if (/config_entry_not_ready/i.test(msg)) {
-      return "Radio Browser is starting up. Try again shortly.";
-    }
-    return msg;
+  _firstPlayer() {
+    const p = this._players();
+    return p.length ? p[0] : "";
   }
-
-  // --- skeleton / events -------------------------------------------------
 
   _buildSkeleton() {
-    const bars = [];
-    for (let i = 0; i < 32; i++) {
-      const h = 12 + Math.round(Math.random() * 88);
-      const d = (0.4 + Math.random() * 0.9).toFixed(2);
-      bars.push(`<i style="--h:${h}%;--d:${d}s"></i>`);
-    }
-    const spectrum =
-      this._config.show_spectrum !== false
-        ? `<div class="spectrum" data-role="spectrum">${bars.join("")}</div>`
-        : "";
-
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <div class="crt">
-        <div class="titlebar">
-          <span class="logo">♪ CLIAMP·RADIO</span>
-          <span class="spacer"></span>
-          <select class="src" data-role="src"></select>
-          <span class="conn" data-role="conn">●</span>
+      <div class="crt" tabindex="0">
+        <div class="screen">
+          <div class="top">
+            <div class="brand">C L I A M P</div>
+            <select class="out" data-role="out" title="Playback target"></select>
+          </div>
+          <div class="nowline">
+            <span class="np" data-role="np"><span class="art">♫</span> —</span>
+            <span class="state" data-role="state">■ Stopped</span>
+          </div>
+          <div class="time"><span data-role="time">00:00 / LIVE</span></div>
+          <div class="sep" data-role="sep"></div>
+          <div class="eqrow">
+            <div class="eq" data-role="eq"></div>
+            <div class="volwrap">
+              <span class="lbl">VOL</span>
+              <span class="volbar" data-role="volbar"></span>
+              <span class="db" data-role="db">+0dB</span>
+            </div>
+          </div>
+          <div class="srcrow">
+            <button class="src" data-role="src" data-act="src"></button>
+            <span class="volbtns">
+              <button data-act="voldn" title="Bajar volumen">−</button>
+              <button data-act="volup" title="Subir volumen">+</button>
+              <button data-act="mute" title="Silenciar">mute</button>
+            </div>
+          </div>
+          <div class="plhead">
+            <span class="head" data-role="plhead">▸─ Playlist ──</span>
+            <span class="tags">
+              <span>[Shuffle]</span> <span>[Repeat: Off]</span>
+              <span class="fav" data-role="favcount">[♥ 0]</span>
+              <span class="cur" data-role="count">[0/0]</span>
+            </span>
+          </div>
+          <div class="searchwrap" data-role="searchwrap" hidden>
+            <span class="prompt">/</span>
+            <input class="search" data-role="search" type="text" spellcheck="false"
+                   placeholder="search stations on radio-browser.info &  ↵" />
+          </div>
+          <div class="list" data-role="list" tabindex="-1"></div>
+          <div class="status" data-role="status"></div>
+          <div class="sep" data-role="sep2"></div>
+          <div class="keys">
+            <span><kbd>↑↓</kbd> <span class="txt">Move</span></span>
+            <span><kbd>↵</kbd> <span class="txt">Play</span></span>
+            <span><kbd>Space</kbd> <span class="txt">Pause</span></span>
+            <span><kbd>/</kbd> <span class="txt">Search</span></span>
+            <span><kbd>←→</kbd> <span class="txt">Source</span></span>
+            <span><kbd>n/p</kbd> <span class="txt">Next/Prev</span></span>
+            <span><kbd>f</kbd> <span class="txt">★/♥︎</span></span>
+            <span><kbd>m</kbd> <span class="txt">Mute</span></span>
+            <span><kbd>x</kbd> <span class="txt">Stop</span></span>
+          </div>
+          <div class="spd"><span class="lbl">SPD</span> <span class="val">[1x]</span></div>
         </div>
-        <div class="now" data-role="now"></div>
-        ${spectrum}
-        <div class="navbar">
-          <button class="ctl" data-action="back" title="Back (Backspace)">◀</button>
-          <button class="ctl" data-action="home" title="Popular">⌂</button>
-          <input class="search" type="search" placeholder="search station…  (press /)" autocomplete="off" />
-          <span class="crumb" data-role="crumb"></span>
-        </div>
-        <div class="list" data-role="list"></div>
-        <div class="controls">
-          <button class="ctl btn" data-action="prev" title="Previous station (p)">⏮</button>
-          <button class="ctl btn" data-action="pp" title="Play/Pause (Space)">▶</button>
-          <button class="ctl btn" data-action="stop" title="Stop (x)">⏹</button>
-          <button class="ctl btn" data-action="next" title="Next station (n)">⏭</button>
-          <button class="ctl btn" data-action="mute" title="Mute (m)">🔇</button>
-          <input type="range" min="0" max="1" step="0.01" data-role="vol" title="Volume" />
-        </div>
-        <div class="status" data-role="status"></div>
-        <div class="hint">↑↓ navegar · Enter reproducir · Espacio play/pausa · / buscar · ⌫ atrás</div>
-      </div>
-    `;
-    this._built = true;
+      </div>`;
   }
 
   _attachEvents() {
-    this.setAttribute("tabindex", "0");
-    this.addEventListener("keydown", (ev) => this._onKey(ev));
+    const root = this.shadowRoot.querySelector(".crt");
+
+    root.addEventListener("keydown", (ev) => this._onKey(ev));
 
     this.shadowRoot.addEventListener("click", (ev) => {
-      const actionEl = ev.target.closest("[data-action]");
-      if (actionEl) {
-        this._onAction(actionEl.getAttribute("data-action"));
+      const actEl = ev.target.closest("[data-act]");
+      if (actEl) {
+        ev.stopPropagation();
+        const act = actEl.getAttribute("data-act");
+        if (act === "fav") {
+          const row = actEl.closest(".row");
+          if (row) this._index = Number(row.getAttribute("data-idx"));
+        }
+        this._onAction(act);
         return;
       }
       const row = ev.target.closest(".row");
-      if (row && row.dataset.index != null) {
-        const item = this._items[Number(row.dataset.index)];
-        if (item) this._enter(item);
+      if (row) {
+        const i = Number(row.getAttribute("data-idx"));
+        if (!Number.isNaN(i)) this._select(i, true);
       }
     });
 
     this.shadowRoot.addEventListener("change", (ev) => {
-      if (ev.target.getAttribute("data-role") === "src") {
+      if (ev.target.getAttribute("data-role") === "out") {
         this._entity = ev.target.value;
-        this._npSig = "";
-        this._renderNowPlaying();
+        this._renderStatus();
       }
     });
 
-    const vol = this.shadowRoot.querySelector('[data-role="vol"]');
-    vol.addEventListener("input", () => {
-      this._volBusy = true;
+    const search = this.shadowRoot.querySelector('[data-role="search"]');
+    search.addEventListener("input", () => {
+      this._query = search.value;
     });
-    vol.addEventListener("change", () => {
-      this._volBusy = false;
-      this._callService("volume_set", { volume_level: Number(vol.value) });
-    });
-
-    const search = this.shadowRoot.querySelector(".search");
     search.addEventListener("keydown", (ev) => {
       if (ev.key === "Enter") {
         ev.preventDefault();
-        const q = search.value.trim();
-        search.blur();
-        this._search(q);
+        this._runSearch();
+        root.focus();
       } else if (ev.key === "Escape") {
-        search.value = "";
-        search.blur();
+        ev.preventDefault();
+        this._setSource(0);
+        root.focus();
+      } else {
+        ev.stopPropagation();
       }
     });
   }
 
-  _onAction(action) {
-    switch (action) {
-      case "back":
-        this._back();
-        break;
-      case "home": {
-        const view = this._config.default_view;
-        this._stack = [];
-        this._loadView(RADIO_VIEWS[view], VIEW_LABEL[view]);
-        break;
+  // --- sources -------------------------------------------------------------
+
+  _setSource(idx) {
+    this._source = ((idx % SOURCES.length) + SOURCES.length) % SOURCES.length;
+    const src = SOURCES[this._source];
+    this._items = [];
+    this._index = 0;
+    this._error = "";
+    this._title = src.label;
+    const searchwrap = this.shadowRoot.querySelector('[data-role="searchwrap"]');
+    searchwrap.hidden = src.key !== "search";
+
+    if (src.key === "local") {
+      this._items = OMARCHY_STATIONS.map((s) => ({
+        title: s.title,
+        media_id: s.media_id,
+        media_type: "music",
+        favId: "local:" + s.media_id,
+      }));
+      this._title = "Playlist";
+      this._render();
+    } else if (src.key === "search") {
+      this._render();
+      if (this._query) this._runSearch();
+      else {
+        const input = this.shadowRoot.querySelector('[data-role="search"]');
+        input.focus();
       }
-      case "prev":
-        this._skipStation(-1);
-        break;
-      case "next":
-        this._skipStation(1);
-        break;
-      case "pp":
-        this._callService("media_play_pause", {});
-        break;
-      case "stop":
-        this._callService("media_stop", {});
-        break;
-      case "mute":
-        this._callService("volume_mute", { is_volume_muted: !this._isMuted() });
-        break;
+    } else if (src.key === "mass") {
+      const masse = this._massPlayers();
+      if (masse.length && !this._isMass(this._entity)) this._entity = masse[0];
+      if (!this._entity) {
+        this._error = "No media_player available.";
+        this._render();
+      } else {
+        this._massStack = [null];
+        this._loadMass(null);
+      }
     }
+    this._renderSrc();
+    this._renderOut();
   }
 
-  _onKey(ev) {
-    const tag = ev.target && ev.target.tagName;
-    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-    switch (ev.key) {
-      case "ArrowDown":
-      case "j":
-        ev.preventDefault();
-        this._move(1);
-        break;
-      case "ArrowUp":
-      case "k":
-        ev.preventDefault();
-        this._move(-1);
-        break;
-      case "Enter":
-        ev.preventDefault();
-        if (this._items[this._index]) this._enter(this._items[this._index]);
-        break;
-      case " ":
-        ev.preventDefault();
-        this._callService("media_play_pause", {});
-        break;
-      case "x":
-        this._callService("media_stop", {});
-        break;
-      case "m":
-        this._callService("volume_mute", { is_volume_muted: !this._isMuted() });
-        break;
-      case "n":
-        this._skipStation(1);
-        break;
-      case "p":
-        this._skipStation(-1);
-        break;
-      case "Backspace":
-        ev.preventDefault();
-        this._back();
-        break;
-      case "/":
-        ev.preventDefault();
-        this.shadowRoot.querySelector(".search").focus();
-        break;
+  async _loadMass(mediaId) {
+    this._loading = true;
+    this._error = "";
+    this._render();
+    try {
+      const res = await this._hass.callWS({
+        type: "media_player/browse_media",
+        entity_id: this._entity,
+        media_content_id: mediaId || null,
+      });
+      this._items = (res.children || []).map((c) => ({
+        title: c.title,
+        subtitle: (c.media_class || "").toString(),
+        media_id: c.media_content_id,
+        media_type: c.media_content_type || "music",
+        isDir: !!c.can_expand,
+        navId: c.media_content_id,
+        thumb: c.thumbnail,
+        favId: "mass:" + c.media_content_id,
+      }));
+      this._title = res.title || "Music Assistant";
+      this._index = 0;
+    } catch (err) {
+      this._error = "Music Assistant browse failed: " + this._humanError(err);
+      this._items = [];
     }
+    this._loading = false;
+    this._render();
   }
 
-  // --- actions -----------------------------------------------------------
-
-  _enter(item) {
-    if (item.can_expand) {
-      this._stack.push({ id: this._currentId, title: this._title });
-      this._loadView(item.media_content_id, item.title);
-    } else if (item.can_play) {
-      this._play(item);
+  async _runSearch() {
+    const q = (this._query || "").trim();
+    if (!q) return;
+    this._loading = true;
+    this._error = "";
+    this._render();
+    try {
+      const data = await this._rb("/json/stations/search", {
+        name: q,
+        limit: RB_LIMIT,
+        hidebroken: "true",
+        order: "clickcount",
+        reverse: "true",
+      });
+      this._items = (Array.isArray(data) ? data : [])
+        .map((s) => ({
+          title: s.name,
+          subtitle: [s.country, s.codec, s.bitrate ? s.bitrate + "kbps" : ""]
+            .filter(Boolean)
+            .join(" · "),
+          media_id: s.url_resolved || s.url,
+          media_type: "music",
+          favId: "rb:" + s.stationuuid,
+        }))
+        .filter((s) => s.media_id);
+      this._title = "Radio · " + q;
+      this._index = 0;
+      if (!this._items.length) this._error = "No stations found for “" + q + "”.";
+    } catch (err) {
+      this._error = "Search failed: " + this._humanError(err);
+      this._items = [];
     }
+    this._loading = false;
+    this._render();
   }
 
-  _back() {
-    const prev = this._stack.pop();
-    if (prev) this._loadView(prev.id, prev.title);
-    else {
-      const view = this._config.default_view;
-      this._loadView(RADIO_VIEWS[view], VIEW_LABEL[view]);
+  async _rb(path, params) {
+    let lastErr = null;
+    for (const host of RB_HOSTS) {
+      try {
+        const url = new URL("https://" + host + path);
+        Object.keys(params).forEach((k) => url.searchParams.set(k, params[k]));
+        const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return await res.json();
+      } catch (err) {
+        lastErr = err;
+      }
     }
+    throw lastErr || new Error("unreachable");
   }
 
-  _play(item) {
-    if (!this._entity) {
-      this._error = "No media_player found. Set `entity:` in the card config.";
-      this._renderStatus();
-      return;
-    }
-    this._playingId = item.media_content_id;
-    this._callService("play_media", {
-      media_content_id: item.media_content_id,
-      media_content_type: item.media_content_type || "music",
-    });
-    this._renderList();
+  _humanError(err) {
+    if (!err) return "unknown";
+    return err.message || String(err);
   }
 
-  _skipStation(dir) {
+  // --- navigation ----------------------------------------------------------
+
+  _select(idx, play) {
     if (!this._items.length) return;
-    let i = this._index;
-    for (let step = 0; step < this._items.length; step++) {
-      i = (i + dir + this._items.length) % this._items.length;
-      if (this._items[i].can_play) {
-        this._index = i;
-        this._renderList();
-        this._play(this._items[i]);
-        return;
-      }
-    }
+    this._index = Math.max(0, Math.min(this._items.length - 1, idx));
+    this._renderList();
+    if (play) this._enter();
   }
 
   _move(delta) {
     if (!this._items.length) return;
-    this._index = Math.max(0, Math.min(this._items.length - 1, this._index + delta));
+    this._index = (this._index + delta + this._items.length) % this._items.length;
     this._renderList();
-    const row = this.shadowRoot.querySelector(".row.sel");
+    this._scrollTo();
+  }
+
+  _scrollTo() {
+    const row = this.shadowRoot.querySelector(`.row[data-idx="${this._index}"]`);
     if (row && row.scrollIntoView) row.scrollIntoView({ block: "nearest" });
   }
 
-  _callService(service, data) {
+  _enter() {
+    const item = this._items[this._index];
+    if (!item) return;
+    if (item.isDir) {
+      this._massStack.push(item.navId);
+      this._loadMass(item.navId);
+      return;
+    }
+    this._play(item);
+  }
+
+  _back() {
+    const isMass = SOURCES[this._source].key === "mass";
+    if (isMass && this._massStack.length > 1) {
+      this._massStack.pop();
+      this._loadMass(this._massStack[this._massStack.length - 1]);
+    } else {
+      this._setSource(0);
+    }
+  }
+
+  // --- playback ------------------------------------------------------------
+
+  _play(item) {
     if (!this._entity) {
-      this._error = "No media_player found. Set `entity:` in the card config.";
+      this._error = "No media_player selected.";
       this._renderStatus();
       return;
     }
-    const payload = Object.assign({ entity_id: this._entity }, data);
-    return this._hass.callService("media_player", service, payload);
+    this._error = "";
+    this._lastStation = item.title;
+    this._playingId = item.media_id;
+
+    if (SOURCES[this._source].key === "mass") {
+      const data = { media_id: item.media_id };
+      const mt = (item.media_type || "").toLowerCase();
+      if (MASS_TYPES.includes(mt)) data.media_type = mt;
+      this._hass.callService("music_assistant", "play_media", data, { entity_id: this._entity });
+    } else {
+      this._hass.callService(
+        "media_player",
+        "play_media",
+        { media_content_id: item.media_id, media_content_type: "music" },
+        { entity_id: this._entity }
+      );
+    }
+    this._renderList();
+    this._renderStatus();
   }
 
-  // --- render ------------------------------------------------------------
+  _togglePlay() {
+    if (!this._entity) return;
+    this._hass.callService("media_player", "media_play_pause", {}, { entity_id: this._entity });
+  }
 
-  _renderEntityOptions() {
-    const sel = this.shadowRoot.querySelector('[data-role="src"]');
+  _stop() {
+    if (!this._entity) return;
+    this._hass.callService("media_player", "media_stop", {}, { entity_id: this._entity });
+  }
+
+  _mute() {
+    const st = this._state(this._entity);
+    const cur = !!(st && st.attributes && st.attributes.is_volume_muted);
+    this._hass.callService(
+      "media_player",
+      "volume_mute",
+      { is_volume_muted: !cur },
+      { entity_id: this._entity }
+    );
+  }
+
+  _vol(delta) {
+    const st = this._state(this._entity);
+    const a = (st && st.attributes) || {};
+    let v = typeof a.volume_level === "number" ? a.volume_level : 0.3;
+    v = Math.max(0, Math.min(1, v + delta));
+    this._hass.callService(
+      "media_player",
+      "volume_set",
+      { volume_level: Math.round(v * 100) / 100 },
+      { entity_id: this._entity }
+    );
+  }
+
+  _next(dir) {
+    if (!this._items.length) return;
+    const n = this._items.length;
+    this._index = (this._index + dir + n) % n;
+    this._renderList();
+    this._scrollTo();
+    this._enter();
+  }
+
+  // --- favourites ----------------------------------------------------------
+
+  _loadFavs() {
+    try {
+      const raw = window.localStorage.getItem("cliamp-radio-favs");
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  _saveFavs() {
+    try {
+      window.localStorage.setItem("cliamp-radio-favs", JSON.stringify(Array.from(this._favs)));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  _toggleFav() {
+    const item = this._items[this._index];
+    if (!item || !item.favId) return;
+    if (this._favs.has(item.favId)) this._favs.delete(item.favId);
+    else this._favs.add(item.favId);
+    this._saveFavs();
+    this._renderList();
+  }
+
+  // --- input ---------------------------------------------------------------
+
+  _onKey(ev) {
+    // when focus is in the search input, it handles its own keys
+    if (ev.target && ev.target.tagName === "INPUT") return;
+    const k = ev.key;
+    if (k === "ArrowDown" || k === "j") {
+      ev.preventDefault();
+      this._move(1);
+    } else if (k === "ArrowUp" || k === "k") {
+      ev.preventDefault();
+      this._move(-1);
+    } else if (k === "Enter") {
+      ev.preventDefault();
+      this._enter();
+    } else if (k === " ") {
+      ev.preventDefault();
+      this._togglePlay();
+    } else if (k === "ArrowRight" || k === "]") {
+      ev.preventDefault();
+      this._setSource(this._source + 1);
+    } else if (k === "ArrowLeft" || k === "[") {
+      ev.preventDefault();
+      this._setSource(this._source - 1);
+    } else if (k === "/") {
+      ev.preventDefault();
+      this._setSource(SOURCES.findIndex((s) => s.key === "search"));
+      const input = this.shadowRoot.querySelector('[data-role="search"]');
+      input.focus();
+    } else if (k === "n") {
+      this._next(1);
+    } else if (k === "p") {
+      this._next(-1);
+    } else if (k === "x") {
+      this._stop();
+    } else if (k === "m") {
+      this._mute();
+    } else if (k === "f") {
+      this._toggleFav();
+    } else if (k === "+" || k === "=") {
+      this._vol(0.05);
+    } else if (k === "-" || k === "_") {
+      this._vol(-0.05);
+    } else if (k === "Escape" || k === "Backspace") {
+      ev.preventDefault();
+      this._back();
+    }
+  }
+
+  _onAction(act) {
+    if (act === "src") this._setSource(this._source + 1);
+    else if (act === "voldn") this._vol(-0.05);
+    else if (act === "volup") this._vol(0.05);
+    else if (act === "mute") this._mute();
+    else if (act === "pp") this._togglePlay();
+    else if (act === "stop") this._stop();
+    else if (act === "next") this._next(1);
+    else if (act === "prev") this._next(-1);
+    else if (act === "fav") this._toggleFav();
+    else if (act === "back") this._back();
+  }
+
+  // --- rendering -----------------------------------------------------------
+
+  _render() {
+    this._renderSrc();
+    this._renderStatus();
+    this._renderList();
+  }
+
+  _renderSrc() {
+    const src = SOURCES[this._source];
+    const el = this.shadowRoot.querySelector('[data-role="src"]');
+    if (el) {
+      el.innerHTML =
+        `<span class="lbl">SRC</span> ` +
+        `<span class="prov">[${esc(src.provider)}]</span> ` +
+        `${this._source + 1}/${SOURCES.length} ` +
+        `<span class="cur">[${esc(src.label)}]</span>`;
+    }
+  }
+
+  _renderOut() {
+    const sel = this.shadowRoot.querySelector('[data-role="out"]');
     if (!sel) return;
     const players = this._players();
-    if (!this._entity || !this._hass.states[this._entity]) {
+    if (!this._entity || !this._state(this._entity)) {
       this._entity = this._config.entity || this._firstPlayer();
     }
     const sig = this._entity + "|" + players.join(",");
-    if (sig === this._srcSig) return;
-    this._srcSig = sig;
-    const html = players
-      .map(
-        (e) =>
-          `<option value="${esc(e)}"${e === this._entity ? " selected" : ""}>${esc(this._friendly(e))}</option>`
-      )
-      .join("");
-    sel.innerHTML = html || `<option>no media_player</option>`;
-  }
-
-  _setSearchValue(v) {
-    const s = this.shadowRoot.querySelector(".search");
-    if (s) s.value = v;
-  }
-
-  _renderNav() {
-    const back = this.shadowRoot.querySelector('[data-action="back"]');
-    if (back) back.disabled = this._stack.length === 0;
-    const crumb = this.shadowRoot.querySelector('[data-role="crumb"]');
-    if (crumb) crumb.textContent = this._title || "";
-  }
-
-  _renderList() {
-    const el = this.shadowRoot.querySelector('[data-role="list"]');
-    if (!el) return;
-    if (!this._items.length) {
-      el.innerHTML = `<div class="row"><span class="glyph">·</span><span class="name">(nothing here)</span></div>`;
-      return;
-    }
-    el.innerHTML = this._items
-      .map((item, i) => {
-        const dir = !!item.can_expand;
-        const playing = !dir && item.media_content_id === this._playingId;
-        const glyph = dir ? "▸" : playing ? "▶" : "♫";
-        const cls = ["row"];
-        if (i === this._index) cls.push("sel");
-        if (dir) cls.push("dir");
-        if (playing) cls.push("playing");
-        return `<div class="${cls.join(" ")}" data-index="${i}">
-          <span class="glyph">${glyph}</span>
-          <span class="name">${esc(item.title || "?")}</span>
-        </div>`;
-      })
-      .join("");
+    if (sig === this._outSig) return;
+    this._outSig = sig;
+    sel.innerHTML = players.length
+      ? players
+          .map(
+            (e) =>
+              `<option value="${esc(e)}"${e === this._entity ? " selected" : ""}>${esc(
+                this._friendly(e)
+              )}${this._isMass(e) ? " ·MA" : ""}</option>`
+          )
+          .join("")
+      : `<option>no media_player</option>`;
   }
 
   _renderStatus() {
-    const el = this.shadowRoot.querySelector('[data-role="status"]');
-    if (!el) return;
-    if (this._error) {
-      el.innerHTML = `<span class="err">${esc(this._error)}</span>`;
-      return;
-    }
-    if (this._loading) {
-      el.innerHTML = `<span class="load">▚ loading…</span>`;
-      return;
-    }
-    el.innerHTML = `<span>${this._items.length} items</span>`;
-  }
-
-  _renderNowPlaying() {
-    const now = this.shadowRoot.querySelector('[data-role="now"]');
-    if (!now) return;
-
     const st = this._state(this._entity);
-    const pp = this.shadowRoot.querySelector('[data-action="pp"]');
-    const spectrum = this.shadowRoot.querySelector('[data-role="spectrum"]');
-    const conn = this.shadowRoot.querySelector('[data-role="conn"]');
+    const a = (st && st.attributes) || {};
+    const s = (st && st.state) || "off";
+    const playing = s === "playing";
 
-    if (conn) conn.classList.toggle("off", !this._hass);
-    if (!st) {
-      now.innerHTML = `<div class="art">♪</div><div class="meta"><div class="st">No player</div><div class="sub">select a media_player</div></div>`;
-      if (pp) pp.textContent = "▶";
-      if (spectrum) spectrum.classList.remove("playing");
-      return;
+    const np = this.shadowRoot.querySelector('[data-role="np"]');
+    if (np) {
+      const art = playing ? "♫" : "♪";
+      const t = a.media_title || this._lastStation || (this._entity ? this._friendly(this._entity) : "—");
+      const html = `<span class="art">${art}</span> ${esc(t)}`;
+      if (this._npHTML !== html) {
+        this._npHTML = html;
+        np.innerHTML = html;
+      }
     }
 
-    const a = st.attributes || {};
-    const title = a.media_title || this._friendly(this._entity);
-
-    const sig = [this._entity, st.state, a.media_title, a.media_artist, a.volume_level, this._isMuted()].join("|");
-    if (sig !== this._npSig) {
-      this._npSig = sig;
-      now.innerHTML = `
-        <div class="art">${st.state === "playing" ? "♫" : "♪"}</div>
-        <div class="meta">
-          <div class="st">${esc(title)}</div>
-          <div class="sub">${esc(this._friendly(this._entity))} · ${esc(st.state)}${this._volText(st)}</div>
-        </div>`;
+    const stEl = this.shadowRoot.querySelector('[data-role="state"]');
+    if (stEl) {
+      const label = playing ? "▶ Playing" : s === "paused" ? "▮▮ Paused" : "■ Stopped";
+      stEl.textContent = label;
+      stEl.classList.toggle("playing", playing);
     }
 
-    if (pp) pp.textContent = st.state === "playing" ? "⏸" : "▶";
-    if (spectrum) spectrum.classList.toggle("playing", st.state === "playing");
+    const eq = this.shadowRoot.querySelector('[data-role="eq"]');
+    if (eq) {
+      eq.innerHTML =
+        `<span class="lbl">EQ</span> <span class="preset">[Custom]</span> ` +
+        `<span class="${playing ? "playing" : ""}">70 180 320 600 1k 3k 6k 12k 14k 16k</span>`;
+    }
 
-    const vol = this.shadowRoot.querySelector('[data-role="vol"]');
-    if (vol && !this._volBusy && st.attributes && typeof st.attributes.volume_level === "number") {
-      vol.value = String(st.attributes.volume_level);
+    this._renderVol();
+  }
+
+  _renderVol() {
+    const st = this._state(this._entity);
+    const a = (st && st.attributes) || {};
+    const vol = typeof a.volume_level === "number" ? a.volume_level : 0;
+    const segs = 40;
+    const filled = Math.round(vol * segs);
+    const bar = this.shadowRoot.querySelector('[data-role="volbar"]');
+    if (bar) {
+      bar.innerHTML =
+        `<span class="on">${"█".repeat(filled)}</span><span class="off">${"░".repeat(
+          Math.max(0, segs - filled)
+        )}</span>`;
+    }
+    const db = this.shadowRoot.querySelector('[data-role="db"]');
+    if (db) {
+      const dbf = vol > 0 ? (20 * Math.log10(vol)).toFixed(0) : "-∞";
+      const muted = a.is_volume_muted ? " (muted)" : "";
+      db.textContent = `${dbf > 0 ? "+" : ""}${dbf}dB${muted}`;
     }
   }
 
-  _volText(st) {
-    const a = st.attributes || {};
-    if (typeof a.volume_level === "number") {
-      const pct = Math.round(a.volume_level * 100);
-      return a.is_volume_muted ? ` · vol ${pct}% (muted)` : ` · vol ${pct}%`;
+  _renderPlayhead() {
+    const now = this.shadowRoot.querySelector('[data-role="time"]');
+    if (now) now.textContent = "00:00 / LIVE";
+  }
+
+  _renderList() {
+    const list = this.shadowRoot.querySelector('[data-role="list"]');
+    if (!list) return;
+    const src = SOURCES[this._source];
+
+    const head = this.shadowRoot.querySelector('[data-role="plhead"]');
+    if (head) {
+      const title = src.key === "local" ? "Playlist" : this._title || "Playlist";
+      head.innerHTML = `▸─ ${esc(title)} ──`;
     }
-    return "";
+
+    const count = this.shadowRoot.querySelector('[data-role="count"]');
+    if (count) {
+      const i = this._items.length ? this._index + 1 : 0;
+      count.textContent = `[${i}/${this._items.length}]`;
+    }
+    const favcount = this.shadowRoot.querySelector('[data-role="favcount"]');
+    if (favcount) favcount.textContent = `[♥ ${this._favs.size}]`;
+
+    if (!this._items.length) {
+      list.innerHTML = `<div class="hint">${
+        this._loading ? "Loading…" : src.key === "search" ? "Type a query and press ↵" : "Empty"
+      }</div>`;
+    } else {
+      list.innerHTML = this._items
+        .map((it, i) => {
+          const cur = i === this._index ? ">" : " ";
+          const fav = it.favId && this._favs.has(it.favId) ? "♥︎" : " ";
+          const playing = this._playingId && it.media_id === this._playingId;
+          const cls = ["row", i === this._index ? "selected" : "", playing ? "playing" : ""]
+            .filter(Boolean)
+            .join(" ");
+          const icon = it.isDir ? "▸ " : "";
+          const sub = it.subtitle ? ` <span class="hint">· ${esc(it.subtitle)}</span>` : "";
+          return (
+            `<div class="${cls}" data-idx="${i}">` +
+            `<span class="cur">${esc(cur)}</span>` +
+            `<span class="num">${String(i + 1).padStart(2)}.</span>` +
+            `<span class="fav" data-act="fav">${esc(fav)}</span> ` +
+            `<span class="name">${esc(icon + it.title)}${sub}</span>` +
+            `</div>`
+          );
+        })
+        .join("");
+    }
   }
 }
 
-customElements.define("cliamp-radio-card", CliampRadioCard);
+if (!customElements.get("cliamp-radio-card")) {
+  customElements.define("cliamp-radio-card", CliampRadioCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "cliamp-radio-card",
   name: "Cliamp Radio Card",
-  description: "Retro terminal radio player (Radio Browser) for any media_player.",
+  description: "A cliamp/Winamp-style radio player for Home Assistant",
   preview: false,
 });
