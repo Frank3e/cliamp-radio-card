@@ -9,7 +9,7 @@
  * Playback targets any media_player (including Music Assistant players).
  */
 
-const CARD_VERSION = "0.2.3";
+const CARD_VERSION = "0.3.0";
 
 console.info(
   `%c CLIAMP·RADIO %c v${CARD_VERSION} `,
@@ -120,7 +120,7 @@ const STYLE = `
 .eqbars .bar { flex:1 1 0; height:100%; display:flex; align-items:flex-end; }
 .eqbars .bar i {
   display:block; width:100%; height:100%; background:var(--green); border-radius:1px;
-  transform:scaleY(.16); transform-origin:bottom center; opacity:.9;
+  transform:scaleY(.28); transform-origin:bottom center; opacity:.92;
 }
 .eqbars.playing .bar > i { animation:eqb 900ms ease-in-out infinite; }
 .eqbars .bar:nth-child(1) > i { animation-delay:-880ms; animation-duration:820ms; }
@@ -245,7 +245,19 @@ class CliampRadioCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { entity: "" };
+    return {
+      entity: "",
+      theme: "auto",
+      stations: "dropdown",
+      show_eq: true,
+      eq_animate: "always",
+      hide_keys: false,
+      dense: false,
+    };
+  }
+
+  static getConfigElement() {
+    return document.createElement("cliamp-radio-card-editor");
   }
 
   setConfig(config) {
@@ -255,6 +267,7 @@ class CliampRadioCard extends HTMLElement {
         theme: "auto", // auto | dark | light
         stations: "dropdown", // dropdown | list  (fuente Local)
         show_eq: true, // mostrar el ecualizador animado
+        eq_animate: "always", // always | playing | off
         hide_keys: false, // ocultar la leyenda de teclas
         dense: false, // forzar formato compacto
       },
@@ -999,7 +1012,11 @@ class CliampRadioCard extends HTMLElement {
     const mbtn = this.shadowRoot.querySelector('[data-role="mbtn"]');
     if (mbtn) mbtn.textContent = a.is_volume_muted ? "🔇" : "🔊";
     const eqbars = this.shadowRoot.querySelector('[data-role="eqbars"]');
-    if (eqbars) eqbars.classList.toggle("playing", playing);
+    if (eqbars) {
+      const mode = this._config.eq_animate;
+      const animate = mode === "always" || (mode !== "off" && playing);
+      eqbars.classList.toggle("playing", animate);
+    }
 
     this._renderPick();
 
@@ -1104,6 +1121,136 @@ class CliampRadioCard extends HTMLElement {
   }
 }
 
+/* ------------------------------------------------------------------------- */
+/* Visual (GUI) editor                                                       */
+/* ------------------------------------------------------------------------- */
+
+const EDITOR_DEFAULTS = {
+  entity: "",
+  theme: "auto",
+  stations: "dropdown",
+  show_eq: true,
+  eq_animate: "always",
+  hide_keys: false,
+  dense: false,
+};
+
+class CliampRadioCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._config = Object.assign({}, EDITOR_DEFAULTS);
+    this._hass = null;
+    this._sig = "";
+  }
+
+  setConfig(config) {
+    this._config = Object.assign({}, EDITOR_DEFAULTS, config || {});
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    const sig = this._players().join(",");
+    if (sig !== this._sig) {
+      this._sig = sig;
+      this._render();
+    }
+  }
+
+  get hass() {
+    return this._hass;
+  }
+
+  _players() {
+    if (!this._hass || !this._hass.states) return [];
+    return Object.keys(this._hass.states)
+      .filter((e) => e.startsWith("media_player."))
+      .sort((a, b) => this._friendly(a).localeCompare(this._friendly(b)));
+  }
+
+  _friendly(id) {
+    const st = this._hass && this._hass.states ? this._hass.states[id] : null;
+    return (st && st.attributes && st.attributes.friendly_name) || id;
+  }
+
+  _set(key, value) {
+    const config = Object.assign({}, this._config);
+    config[key] = value;
+    this._config = config;
+    const ev = new Event("config-changed", { bubbles: true, composed: true });
+    ev.detail = { config: config };
+    this.dispatchEvent(ev);
+  }
+
+  _sel(val, list) {
+    return list
+      .map((o) => `<option value="${o}"${o === val ? " selected" : ""}>${o}</option>`)
+      .join("");
+  }
+
+  _render() {
+    const c = this._config;
+    const players = this._players();
+    const playerOpts =
+      `<option value=""${c.entity ? "" : " selected"}>Auto (el primero)</option>` +
+      players
+        .map(
+          (e) =>
+            `<option value="${esc(e)}"${e === c.entity ? " selected" : ""}>${esc(
+              this._friendly(e)
+            )}</option>`
+        )
+        .join("");
+    this.shadowRoot.innerHTML = `
+      <style>
+        .form { display:flex; flex-direction:column; gap:12px; padding:4px 2px; }
+        .field { display:flex; flex-direction:column; gap:4px; font-size:13px; }
+        .field > span { color:var(--secondary-text-color,#888); }
+        select {
+          padding:8px; border-radius:6px; font:inherit;
+          background:var(--card-background-color,#fff); color:var(--primary-text-color,#000);
+          border:1px solid var(--divider-color,#ccc);
+        }
+        .chk { flex-direction:row; align-items:center; gap:8px; }
+        .chk input { width:18px; height:18px; }
+      </style>
+      <div class="form">
+        <label class="field"><span>Altavoz</span>
+          <select data-k="entity">${playerOpts}</select>
+        </label>
+        <label class="field"><span>Tema (fondo negro/blanco)</span>
+          <select data-k="theme">${this._sel(c.theme, ["auto", "dark", "light"])}</select>
+        </label>
+        <label class="field"><span>Emisoras de Omarchy</span>
+          <select data-k="stations">${this._sel(c.stations, ["dropdown", "list"])}</select>
+        </label>
+        <label class="field"><span>Animación del EQ</span>
+          <select data-k="eq_animate">${this._sel(c.eq_animate, ["always", "playing", "off"])}</select>
+        </label>
+        <label class="field chk"><input type="checkbox" data-k="show_eq" ${
+          c.show_eq ? "checked" : ""
+        }/><span>Mostrar ecualizador</span></label>
+        <label class="field chk"><input type="checkbox" data-k="hide_keys" ${
+          c.hide_keys ? "checked" : ""
+        }/><span>Ocultar leyenda de teclas</span></label>
+        <label class="field chk"><input type="checkbox" data-k="dense" ${
+          c.dense ? "checked" : ""
+        }/><span>Formato compacto</span></label>
+      </div>`;
+    this.shadowRoot.querySelectorAll("[data-k]").forEach((el) => {
+      el.addEventListener("change", () => {
+        const k = el.getAttribute("data-k");
+        this._set(k, el.type === "checkbox" ? el.checked : el.value);
+      });
+    });
+  }
+}
+
+if (!customElements.get("cliamp-radio-card-editor")) {
+  customElements.define("cliamp-radio-card-editor", CliampRadioCardEditor);
+}
+
 if (!customElements.get("cliamp-radio-card")) {
   customElements.define("cliamp-radio-card", CliampRadioCard);
 }
@@ -1113,5 +1260,5 @@ window.customCards.push({
   type: "cliamp-radio-card",
   name: "Cliamp Radio Card",
   description: "A cliamp/Winamp-style radio player for Home Assistant",
-  preview: false,
+  preview: true,
 });

@@ -35,10 +35,15 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   `ResizeObserver` en `_watchSize()`/`_applySize()` que aplica `.hide-keys`,
   `.tight`, `.roomy`. `getGridOptions()` define el tamaño en Sections view.
 - **Config (`setConfig`)**: `entity`, `theme` (auto|dark|light), `stations`
-  (dropdown|list, fuente Local), `show_eq`, `hide_keys`, `dense`.
+  (dropdown|list, fuente Local), `eq_animate` (always|playing|off), `show_eq`,
+  `hide_keys`, `dense`.
   El tema se resuelve en `_isDark()`/`_applyTheme()` (usa `hass.themes.darkMode`
   con `theme:auto`). Las emisoras de Omarchy en desplegable se pintan en
   `_renderPick()`; con `stations:list` se oculta el `select` y se ve la lista.
+- **Editor visual**: `static getConfigElement()` devuelve `<cliamp-radio-card-editor>`
+  (`CliampRadioCardEditor`), un formulario con `select`s/`checkbox` que emite
+  `config-changed` (`{bubbles,composed}`). Registrada al final del archivo.
+  `window.customCards` con `preview:true`.
 
 ## Publicar
 - El remoto usa **HTTPS** (`https://github.com/Frank3e/cliamp-radio-card.git`) porque

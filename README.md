@@ -32,16 +32,23 @@ Copia `dist/cliamp-radio-card.js` a `config/www/` y añade el recurso
 
 ## Configuración
 
+La tarjeta tiene **editor visual**: en el dashboard pulsa una tarjeta → *Editar*,
+y verás desplegables e interruptores (altavoz, tema, emisoras, EQ, compacto…).
+Para añadirla: *Añadir tarjeta* → busca "Cliamp".
+
+También por YAML:
+
 ```yaml
 type: custom:cliamp-radio-card
 entity: media_player.salon   # opcional: altavoz por defecto
 
 # Todas opcionales:
-theme: auto        # auto (sigue día/noche de HA) | dark (negro) | light (blanco)
-stations: dropdown # dropdown (menú desplegable de las 12 de Omarchy) | list
-show_eq: true      # mostrar el ecualizador animado
-hide_keys: false   # ocultar la leyenda de teclas
-dense: false       # formato compacto (más pequeño)
+theme: auto         # auto (sigue día/noche de HA) | dark (negro) | light (blanco)
+stations: dropdown  # dropdown (menú desplegable de las 12 de Omarchy) | list
+eq_animate: always  # always (siempre) | playing (solo al reproducir) | off
+show_eq: true       # mostrar el ecualizador animado
+hide_keys: false    # ocultar la leyenda de teclas
+dense: false        # formato compacto
 ```
 
 Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
@@ -54,6 +61,7 @@ Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
 | `entity`     | id de `media_player`   | autodetecta | Altavoz por defecto.                                   |
 | `theme`      | `auto` / `dark` / `light` | `auto`   | Fondo **negro** de noche o **blanco** de día (sigue a HA). |
 | `stations`   | `dropdown` / `list`    | `dropdown`  | Emisoras de Omarchy en un **menú desplegable** o como lista. |
+| `eq_animate` | `always` / `playing` / `off` | `always` | Cuándo animan las barras del EQ.          |
 | `show_eq`    | `true` / `false`       | `true`      | Muestra/oculta el ecualizador animado.                 |
 | `hide_keys`  | `true` / `false`       | `false`     | Oculta la leyenda de atajos de teclado.                |
 | `dense`      | `true` / `false`       | `false`     | Formato compacto (útil en huecos pequeños).            |
@@ -80,8 +88,9 @@ Los favoritos se guardan en el navegador (`localStorage`).
 - **Emisoras en desplegable**: con `stations: dropdown` (por defecto) las 12
   emisoras de Omarchy van en un menú desplegable más estilizado; con `list` se
   muestran como lista.
-- **EQ animado**: barras que "bailan" cuando hay reproducción (planas al
-  pausar/parar). Respeta `prefers-reduced-motion`; se oculta con `show_eq: false`.
+- **EQ animado**: barras que "bailan". Por defecto `eq_animate: always`; con
+  `playing` solo al reproducir y con `off` quedan quietas. Respeta
+  `prefers-reduced-motion`; se oculta con `show_eq: false`.
 - **Formas configurables**: `dense` (compacto) y `hide_keys` (sin pie de teclas)
   además de la adaptación automática al hueco.
 - **Sections view**: `getGridOptions()` permite redimensionarla (por defecto 6 de
