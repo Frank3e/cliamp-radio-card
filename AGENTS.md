@@ -10,9 +10,17 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   bg `#031222`, panel `#0a2540`, verde `#028391`, crema `#f6dcac`,
   amarillo `#e97b3c`, rojo `#f85525`, cian `#8cbfb8`, muted `#2a6b78`, accent `#faa968`.
 
-## Estado actual (v0.3.0)
+## Estado actual (v0.4.0)
 - Fuentes: Local (12 Omarchy), Search (radio-browser), Library (Music Assistant).
-- Altavoz: fila `🔊 Altavoz` (jugadores MA marcados `·MA`).
+- **Library** navega con `media_player/browse_media` y **busca** con
+  `media_player/search_media` (WS; requiere la integración Music Assistant de HA
+  Core, que declara `SEARCH_MEDIA`). Query en mayúsculas: `result[]` con
+  `media_class`, `media_content_id` (URI), `can_expand`, `can_play`.
+- Altavoz: fila `🔊 Altavoz` (jugadores MA marcados `·MA`). El último altavoz
+  elegido se guarda en `localStorage` (`cliamp-radio-out`) y se restaura al
+  recargar (prioridad: guardado > `config.entity` > primer `media_player`).
+  Al entrar en Library solo se autoselecciona un reproductor MA si no hay
+  altavoz guardado.
 - Pestañas de fuente táctiles + barra de transporte táctil (play/pausa, stop,
   prev/next, mute, deslizador de volumen).
 - **EQ animado** de 10 barras (`.eqbars`), animación CSS `eqb`; por defecto
@@ -26,7 +34,7 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   `getGridOptions()` para Sections view (6×6 por defecto, 3×3–12×12).
 - Ficheros: `dist/cliamp-radio-card.js` (todo el código), `test/`, `README.md`,
   `hacs.json`, `info.md`, `AGENTS.md`.
-- Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0.
+- Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0, v0.3.1, v0.4.0.
 
 ## Ideas / pendientes (por si se retoma)
 - Botón "aleatorio"/shuffle real y repetir (hoy `[Shuffle]`/`[Repeat: Off]` son
@@ -45,9 +53,12 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   (slugs: lofi, synthwave, edm, omarchy, ncs, ncs-house, ncs-dubstep, ncs-dnb, ncs-trap, ncs-phonk, ncs-pop, ncs-chill).
 - `Search`: `radio-browser.info` directo (CORS OK). Hosts: de1/de2/at1/nl1/fi1.api.radio-browser.info.
 - `Library`: Music Assistant. Navegar con WS `media_player/browse_media`
-  `{entity_id, media_content_id}`; reproducir con `music_assistant.play_media`
-  `{media_id, media_type}` (tipos válidos: artist, album, audiobook, folder, playlist, podcast, track, radio).
-  `music_assistant.search` NO sirve (requiere `config_entry_id`).
+  `{entity_id, media_content_id}`; buscar con WS `media_player/search_media`
+  `{entity_id, search_query}` → `{result:[...]}`. Reproducir con
+  `music_assistant.play_media` `{media_id, media_type}` (tipos válidos: artist, album, audiobook, folder, playlist, podcast, track, radio).
+  La búsqueda SOLO funciona con la integración de HA Core (`music_assistant`),
+  no con el componente antiguo de HACS (domain `mass`) ni con
+  `music_assistant.search` (ese requiere `config_entry_id`).
 
 ## Reglas de edición (IMPORTANTE)
 - **No usar sintaxis JS moderna**: nada de optional chaining `?.`, nullish `??`,

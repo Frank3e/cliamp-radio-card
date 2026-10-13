@@ -7,7 +7,7 @@ reproductor de terminal de Omarchy/Winamp 2.x).
 
 - Playlist de las **12 emisoras de Omarchy** (`radio.cliamp.stream`).
 - **Buscador** de cualquier emisora en radio-browser.info.
-- Navega tu **biblioteca de Music Assistant** y reproduce en sus altavoces.
+- Navega y **busca** en tu **biblioteca de Music Assistant**; reproduce en sus altavoces.
 - Transporte y volumen, favoritos y control por teclado.
 
 ```yaml

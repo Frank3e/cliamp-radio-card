@@ -20,7 +20,7 @@ Music Assistant).
 | -------------------- | ------------------------------------------------------------------ |
 | `[Radio] [Local]`    | Las 12 emisoras de Omarchy/cliamp (NCS, Lofi, Synthwave, Omarchy…). |
 | `[Radio] [Search]`   | Buscador en `radio-browser.info` (cualquier emisora del mundo).     |
-| `[MusicAssistant] [Library]` | Tu biblioteca de Music Assistant (radio, álbumes, artistas…).|
+| `[MusicAssistant] [Library]` | Tu biblioteca de Music Assistant: **navega** por carpetas y **busca** canciones, álbumes, artistas… |
 
 ## Instalación con HACS
 
@@ -72,17 +72,18 @@ Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
 
 ## Uso
 
-- **Selector de altavoz**: fila **🔊 Altavoz** (indica dónde sonará).
+- **Selector de altavoz**: fila **🔊 Altavoz** (indica dónde sonará). Recuerda
+  el último altavoz elegido (aunque recargues la tarjeta o el navegador).
 - **Fuente**: pestañas **[Local] [Search] [Library]** (o `←`/`→`).
 - **Clic/táctil**: toca una emisora/carpeta para reproducir o entrar.
 - **Barra táctil**: `⏮` anterior · `▶/❚❚` reproducir/pausar · `⏹` parar ·
   `⏭` siguiente · `🔊/🔇` silenciar · **deslizador de volumen**.
-- **Buscador**: pestaña **[Search]** → escribe y pulsa Enter.
+- **Buscador**: pestaña **[Search]** (radio-browser) o **[Library]** (Music
+  Assistant) → escribe y pulsa Enter.
 - **Teclado**: `↑↓` mover · `↵` reproducir · `Space` pausa · `/` buscar ·
-  `←→` fuente · `n`/`p` siguiente/anterior · `f` favorito · `m` silenciar ·
-  `+`/`-` volumen · `x` parar · `Esc` atrás.
+  `←→` fuente · `n`/`p` siguiente/anterior · `f` favorito · `x` parar · `Esc` atrás.
 
-Los favoritos se guardan en el navegador (`localStorage`).
+Los favoritos y el último altavoz elegido se guardan en el navegador (`localStorage`).
 
 ## Estética y tamaño
 
@@ -104,9 +105,10 @@ Los favoritos se guardan en el navegador (`localStorage`).
 ## Requisitos
 
 - Home Assistant 2024.2+.
-- Para la fuente **Library**, la integración **Music Assistant** y al menos un
-  reproductor de MA. Las fuentes **Local** y **Search** funcionan con cualquier
-  `media_player` (no necesitan la integración Radio Browser).
+- Para la fuente **Library**, la integración **Music Assistant** de HA Core y al
+  menos un reproductor de MA. La búsqueda por texto usa `media_player/search_media`
+  (necesita la integración de Core, no el componente antiguo de HACS). Las fuentes
+  **Local** y **Search** funcionan con cualquier `media_player`.
 
 ## Solución de problemas (Echo Show / Fire Tablet)
 

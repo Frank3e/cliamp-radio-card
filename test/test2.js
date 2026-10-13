@@ -75,6 +75,14 @@ const hass = {
       }
       return { title: "x", children: [] };
     }
+    if (msg.type === "media_player/search_media") {
+      return {
+        result: [
+          { title: "Mock Track", media_content_id: "library://track/28", media_class: "track", can_play: true, can_expand: false },
+          { title: "Mock Album", media_content_id: "library://album/8", media_class: "album", can_play: true, can_expand: true },
+        ],
+      };
+    }
     return {};
   },
   callService: async (domain, service, data, target) => {
@@ -155,6 +163,25 @@ const hass = {
   await tick();
   check("back returns to MA root", sr.querySelector(".list").textContent.includes("Albums"));
 
+  // 9b. Music Assistant library search (media_player/search_media)
+  const mSearch = sr.querySelector('[data-role="search"]');
+  check("MA source shows search box", !sr.querySelector('[data-role="searchwrap"]').hidden && mSearch.placeholder.includes("Music Assistant"));
+  wsCalls = [];
+  mSearch.value = "mock";
+  mSearch.dispatchEvent(new window.Event("input", { bubbles: true }));
+  mSearch.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  await tick(); await tick();
+  check("MA search_media called", wsCalls.some((c) => c.type === "media_player/search_media" && c.search_query === "mock"));
+  check("MA search results rendered", sr.querySelector(".list").textContent.includes("Mock Track"));
+  svcCalls = [];
+  key("Enter"); // play first result
+  await tick();
+  const p4 = svcCalls.find((c) => c.service === "play_media");
+  check("MA search result plays", !!p4 && p4.data.media_id === "library://track/28" && p4.data.media_type === "track");
+  key("Escape"); // back to MA root
+  await tick();
+  check("MA search back to root", sr.querySelector(".list").textContent.includes("Albums"));
+
   // 10. volume + / mute (removed in UI)
 
   // 11. favourite toggle persists
@@ -169,6 +196,18 @@ const hass = {
   key("ArrowDown");
   const after = sr.querySelector(".row.selected").getAttribute("data-idx");
   check("ArrowDown moves cursor", before !== after);
+
+  // 13. last speaker persists across reloads
+  const sel = sr.querySelector('[data-role="out"]');
+  sel.value = "media_player.living_room";
+  sel.dispatchEvent(new window.Event("change", { bubbles: true }));
+  check("speaker choice saved", window.localStorage.getItem("cliamp-radio-out") === "media_player.living_room");
+  const el2 = document.createElement("cliamp-radio-card");
+  document.body.appendChild(el2);
+  el2.setConfig({ entity: "media_player.kitchen" });
+  el2.hass = hass;
+  await tick();
+  check("last speaker restored on reload", el2._entity === "media_player.living_room");
 
   const failed = results.filter(([, ok]) => !ok);
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
