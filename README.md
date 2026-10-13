@@ -10,6 +10,8 @@ cualquier emisora de `radio-browser.info`, y navegación de tu **biblioteca de
 Music Assistant**. Reproduce en cualquier `media_player` (incluidos los de
 Music Assistant).
 
+![Cliamp Radio Card](images/preview.png)
+
 ## Fuentes (se cambian con ←/→ o clic en `SRC`)
 
 | SRC                  | Qué muestra                                                        |
