@@ -22,7 +22,8 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   Al entrar en Library solo se autoselecciona un reproductor MA si no hay
   altavoz guardado.
 - Pestañas de fuente táctiles + barra de transporte táctil (play/pausa, stop,
-  prev/next, mute, deslizador de volumen).
+  prev/next, deslizador de volumen). El botón mute del transporte quedó **inerte**
+  desde v0.3.1 (ver Pendientes).
 - **EQ animado** de 10 barras (`.eqbars`), animación CSS `eqb`; por defecto
   `eq_animate: always` (opciones `playing`/`off`).
 - **Tema claro/oscuro**: `theme:auto` sigue `hass.themes.darkMode` → fondo negro
@@ -36,7 +37,42 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   `hacs.json`, `info.md`, `AGENTS.md`.
 - Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0, v0.3.1, v0.4.0.
 
+## Dónde nos quedamos (última sesión → v0.4.0)
+- **Publicado v0.4.0** el 2026-10-13. Commit `954a5b2` en `main`, tag `v0.4.0`,
+  release: https://github.com/Frank3e/cliamp-radio-card/releases/tag/v0.4.0
+  CI (HACS + validate) en verde en los runs del push y del tag.
+- Cambios de esta sesión (todo en `dist/cliamp-radio-card.js`, `CARD_VERSION = "0.4.0"`):
+  - **Búsqueda en Library (MA)**: caja de búsqueda visible en la fuente `mass`
+    (placeholder "search your Music Assistant library"); `Enter` llama al WS
+    `media_player/search_media`. Los resultados se mapean con `_massItem()` y se
+    navegan/reproducen igual que `browse_media`. `Esc` desde resultados vuelve a
+    la raíz (`_back()` detecta el título `Music · …`). Error amable si el backend
+    no soporta `SEARCH_MEDIA`. Query propia en `this._massQuery` (separada de la
+    de radio, `this._query`). `/` enfoca el buscador de la fuente actual.
+  - **Último altavoz recordado**: `_loadOut()`/`_saveOut()` en `localStorage`
+    clave `cliamp-radio-out`. Se guarda al cambiar el desplegable `[data-role=out]`;
+    se restaura en `_init()` y en el fallback de `_renderOut()`. Prioridad:
+    guardado > `config.entity` > primer `media_player`. La autoselección de
+    reproductor MA al entrar en Library solo ocurre si `!this._savedOut`.
+  - `_massItem()` sustituye el mapeo inline que había en `_loadMass()`; deriva
+    `media_type` de `media_class` (o `media_content_type` como fallback) usando
+    `MASS_TYPES`.
+  - Docs: `README.md` (secciones Fuentes/Uso/Requisitos), `info.md`, este AGENTS.
+  - Tests: `test/test2.js` con 4 checks nuevos de MA search + 2 de persistencia
+    del altavoz → **30/30**. `featcheck` 12, `editorcheck` 8, `eqcheck` OK.
+- **Antes (v0.3.1, ya en remoto)**: EQ más grande (`.eqbars` 34px; `tight` 22,
+  `roomy` 40), quitados números de frecuencia del EQ, quitados botones mute/−/+
+  de la fila `.volbtns`, ocultada la leyenda de teclas (`.keys` → `display:none`)
+  y quitados los atajos `m`/`+`/`-`; capturas `images/preview*.png` regeneradas.
+- **Cómo verificar esta versión**: con un reproductor de la integración Music
+  Assistant **de HA Core**. Si el altavoz MA viene del componente viejo de HACS,
+  la búsqueda mostrará el aviso (no es un bug de la tarjeta).
+
 ## Ideas / pendientes (por si se retoma)
+- **Botón de mute del transporte**: en v0.3.1 se quitó la acción `mute` de
+  `_onAction()` y el atajo `m`, pero el botón `[data-act="mute"]` (icono
+  `mbtn`) sigue en la barra de transporte y ya NO hace nada. Decidir si
+  reponerlo (volver a llamar a `_mute()`, que aún existe) o quitarlo del todo.
 - Botón "aleatorio"/shuffle real y repetir (hoy `[Shuffle]`/`[Repeat: Off]` son
   solo estéticos).
 - Mostrar carátula/`entity_picture` del reproductor.
