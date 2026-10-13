@@ -68,6 +68,9 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
     antes del separador de teclas. `LRCLIB` con CORS `*` (verificado).
   - **Editor**: nuevos `select` `palette`, `visualizer`, `lyrics` + `getStubConfig`
     y `EDITOR_DEFAULTS` actualizados.
+  - **Fix `[hidden]`**: añadida `.crt [hidden] { display:none !important; }`; el
+    `display:flex` de `.searchwrap`/`.outrow` pisaba `hidden`, así que el buscador
+    se veía en `Local` y el desplegable "Emisora" en modo `list`.
   - Docs: `README.md` (tabla de opciones + sección Estética), `info.md`, este AGENTS.
   - Tests: nuevos `test/vizcheck.js` (11) y `test/lyrcheck.js` (7, mock de fetch
     LRCLIB) + `package.json` los ejecuta. Todo verde: test2 **30/30**, featcheck
@@ -124,6 +127,15 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
 - Filtro de emisoras por país/género en `Search`.
 - Recordar última emisora por altavoz.
 - Página/release en HACS: añadir `image`/`homeassistant` mínimos en `hacs.json`.
+- **Más paletas**: cliamp trae ~22; hoy hay 9. Añadir el resto a `PALETTES`.
+- **Visualizer dirigido por audio real**: hoy es CSS determinista; con streams
+  remotos no hay Web Audio (CORS). Alternativa: leer un `sensor`/atributo de nivel
+  si existe, o mantener el fake.
+- **Letras**: control de offset manual, indicador "buscando…", y fallback a otra
+  fuente si LRCLIB no tiene la pista.
+- Barra de progreso con **scrubbing** cuando la pista tiene duración (hoy `LIVE`
+  en radio; en Library podría arrastrarse).
+- Selector de **color de acento** independiente de la paleta.
 
 ## Cómo trabaja el usuario
 - Usa el dashboard en PC, **Echo Show** y una **Fire Tablet** (navegadores con
@@ -154,10 +166,13 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
     `/tmp/opencode/card-test`; ahora en `test/`.
 - `this._built` debe ponerse a `true` al final de `_init()`; si no, la tarjeta se
   reconstruye en cada actualización de estado y pierde el estado.
-- La estética incluye un **EQ animado** (`.eqbars`, 10 barras, animación CSS
-  `eqb` activada por la clase `.playing`) y **adaptación al tamaño** vía
-  `ResizeObserver` en `_watchSize()`/`_applySize()` que aplica `.hide-keys`,
-  `.tight`, `.roomy`. `getGridOptions()` define el tamaño en Sections view.
+- La estética incluye un **visualizer de espectro** (`.eqbars`, **32 barras**,
+  estilos por `data-viz`, animación CSS `eqb`/`eqc`/`eqbm` activada por la clase
+  `.playing`; `no-eq` lo oculta) y **adaptación al tamaño** vía `ResizeObserver`
+  en `_watchSize()`/`_applySize()` que aplica `.hide-keys`, `.tight`, `.roomy`.
+  `getGridOptions()` define el tamaño en Sections view.
+- Regla CSS `.crt [hidden] { display:none !important; }`: necesaria porque
+  `.searchwrap`/`.outrow` usan `display:flex`, que si no pisa el atributo `hidden`.
 - **Config (`setConfig`)**: `entity`, `theme` (auto|dark|light), `palette`
   (omarchy|matte-black|catppuccin-mocha|catppuccin-latte|flexoki-light|ethereal|
   tokyo-night|nord|gruvbox-dark), `visualizer` (bars|blocks|peak|mirror|dots|off),
