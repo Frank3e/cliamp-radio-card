@@ -48,7 +48,7 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   Regenerar capturas: `cd test && npm run preview` (Chromium + ImageMagick).
 - Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0, v0.3.1, v0.4.0, v0.5.0.
 
-## Dónde nos quedamos (última sesión → v0.5.0, sin publicar)
+## Dónde nos quedamos (última sesión → v0.5.0 publicada)
 - Objetivo: acercar la tarjeta a la estética del **vídeo promocional de cliamp**
   (fuente: `github.com/user-attachments/assets/55e251f2-e13b-43d9-bb6a-7b1960e7d7d0`).
   El usuario pidió priorizar: **visualizer de espectro**, **temas/paleta** y
@@ -77,8 +77,10 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
     `preview-light.png`, `preview-lyrics.png`, y los montajes `preview-themes.png`
     (9 paletas) y `preview-visualizers.png` (6 estilos). README muestra estas
     nuevas imágenes.
-- **Pendiente**: aún NO se ha publicado (sin commit/tag/release). Decidir si se
-  sube.
+- **Publicado v0.5.0** el 2026-10-13. Commit `91566be` en `main`, tag `v0.5.0`,
+  release: https://github.com/Frank3e/cliamp-radio-card/releases/tag/v0.5.0
+  CI (Validate/HACS) en verde en los runs del push a `main` y del tag.
+- En HA el usuario actualiza por **HACS → Cliamp Radio Card → Update / Redownload**.
 
 ## Dónde nos quedamos (sesión anterior → v0.4.0)
 - **Publicado v0.4.0** el 2026-10-13. Commit `954a5b2` en `main`, tag `v0.4.0`,
