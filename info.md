@@ -8,12 +8,17 @@ reproductor de terminal de Omarchy/Winamp 2.x).
 - Playlist de las **12 emisoras de Omarchy** (`radio.cliamp.stream`).
 - **Buscador** de cualquier emisora en radio-browser.info.
 - Navega y **busca** en tu **biblioteca de Music Assistant**; reproduce en sus altavoces.
+- **Visualizer de espectro** (bars/blocks/peak/mirror/dots) y **9 paletas** tipo cliamp.
+- **Letras sincronizadas** (karaoke) vía LRCLIB.
 - Transporte y volumen, favoritos y control por teclado.
 
 ```yaml
 type: custom:cliamp-radio-card
 entity: media_player.salon
+palette: omarchy
+visualizer: bars
+lyrics: off
 ```
 
 Fondo `#031222`, verde `#028391`, crema `#f6dcac`, naranja `#e97b3c`: los colores
-del tema actual de tu terminal Omarchy.
+del tema actual de tu terminal Omarchy (paleta `omarchy`).

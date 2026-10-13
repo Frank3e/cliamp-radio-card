@@ -10,7 +10,7 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
   bg `#031222`, panel `#0a2540`, verde `#028391`, crema `#f6dcac`,
   amarillo `#e97b3c`, rojo `#f85525`, cian `#8cbfb8`, muted `#2a6b78`, accent `#faa968`.
 
-## Estado actual (v0.4.0)
+## Estado actual (v0.5.0)
 - Fuentes: Local (12 Omarchy), Search (radio-browser), Library (Music Assistant).
 - **Library** navega con `media_player/browse_media` y **busca** con
   `media_player/search_media` (WS; requiere la integración Music Assistant de HA
@@ -24,8 +24,18 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
 - Pestañas de fuente táctiles + barra de transporte táctil (play/pausa, stop,
   prev/next, deslizador de volumen). El botón mute del transporte quedó **inerte**
   desde v0.3.1 (ver Pendientes).
-- **EQ animado** de 10 barras (`.eqbars`), animación CSS `eqb`; por defecto
-  `eq_animate: always` (opciones `playing`/`off`).
+- **Visualizer de espectro** de **32 barras** (`.eqbars`), estilos
+  `bars|blocks|peak|mirror|dots|off` (`visualizer`); animación CSS `eqb`/`eqc`/`eqbm`
+  con `--d`/`--dur` por barra; por defecto `eq_animate: always`.
+- **Paletas** (`palette`): `omarchy` (sigue `theme` auto/dark/light) +
+  `matte-black`, `catppuccin-mocha`, `catppuccin-latte`, `flexoki-light`,
+  `ethereal`, `tokyo-night`, `nord`, `gruvbox-dark`. Se aplican como CSS vars
+  inline en `.crt` (`_applyPalette`); las claras marcan `theme-light`.
+- **Letras sincronizadas** (`lyrics: off|on`): panel `.lyrwrap`/`.lyrics`, busca
+  en **LRCLIB** (`https://lrclib.net/api/get`, CORS `*`) por
+  artist/title/album/duration; parsea LRC (`_parseLrc`), resalta la línea activa
+  según `media_position`+`media_position_updated_at` y un `setInterval` de 400 ms
+  (`_startLyricTimer`). Timers se limpian en `disconnectedCallback`.
 - **Tema claro/oscuro**: `theme:auto` sigue `hass.themes.darkMode` → fondo negro
   de noche (`#000`) o blanco de día (`#fff`); `dark`/`light` lo fuerzan.
 - **Emisoras de Omarchy en desplegable** (`stations:dropdown`, por defecto) o
@@ -34,10 +44,43 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
 - **Adaptación al tamaño**: `dense`, `hide_keys` + auto por `ResizeObserver`;
   `getGridOptions()` para Sections view (6×6 por defecto, 3×3–12×12).
 - Ficheros: `dist/cliamp-radio-card.js` (todo el código), `test/`, `README.md`,
-  `hacs.json`, `info.md`, `AGENTS.md`.
-- Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0, v0.3.1, v0.4.0.
+  `hacs.json`, `info.md`, `AGENTS.md`, `images/` (capturas + `preview.js`).
+  Regenerar capturas: `cd test && npm run preview` (Chromium + ImageMagick).
+- Versión actual en `CARD_VERSION`; últimas releases: v0.2.1, v0.2.2, v0.2.3, v0.3.0, v0.3.1, v0.4.0, v0.5.0.
 
-## Dónde nos quedamos (última sesión → v0.4.0)
+## Dónde nos quedamos (última sesión → v0.5.0, sin publicar)
+- Objetivo: acercar la tarjeta a la estética del **vídeo promocional de cliamp**
+  (fuente: `github.com/user-attachments/assets/55e251f2-e13b-43d9-bb6a-7b1960e7d7d0`).
+  El usuario pidió priorizar: **visualizer de espectro**, **temas/paleta** y
+  **letras sincronizadas**.
+- Cambios de esta sesión (todo en `dist/cliamp-radio-card.js`, `CARD_VERSION = "0.5.0"`):
+  - **Visualizer**: `.eqbars` pasa de 10 a **32 barras** construidas en
+    `_buildViz()` con `--d`/`--dur` deterministas (`rnd()`), cada barra con
+    `<i class="cap">` + `<i class="fill">`. Estilos por `data-viz` (`_applyViz`):
+    `bars` por defecto, `blocks` (gradiente segmentado), `peak` (cap que cae),
+    `mirror` (centrado), `dots`, `off`. Colores por `--c` (nth-child odd/4n).
+  - **Paletas**: `PALETTES`/`PALETTE_NAMES`/`PALETTE_VARS`; `_applyPalette()` en
+    `_applyTheme()`. `omarchy` = sin vars inline (manda `.theme-dark/.theme-light`);
+    el resto aplica vars inline. `_isDark()` usa `palette.light` si no es omarchy.
+  - **Letras**: `lyrics` en config; `_applyLyrics()` (desde `_renderStatus`),
+    `_fetchLyrics()`/`_parseLrc()`/`_setLyrics()`/`_renderLyrics()`/`_tickLyrics()`,
+    `_currentPos()` (usa posición + `_isPlaying`), timer 400 ms. Panel `.lyrwrap`
+    antes del separador de teclas. `LRCLIB` con CORS `*` (verificado).
+  - **Editor**: nuevos `select` `palette`, `visualizer`, `lyrics` + `getStubConfig`
+    y `EDITOR_DEFAULTS` actualizados.
+  - Docs: `README.md` (tabla de opciones + sección Estética), `info.md`, este AGENTS.
+  - Tests: nuevos `test/vizcheck.js` (11) y `test/lyrcheck.js` (7, mock de fetch
+    LRCLIB) + `package.json` los ejecuta. Todo verde: test2 **30/30**, featcheck
+    **12**, editorcheck **8**, vizcheck **11**, lyrcheck **7**.
+  - **Capturas regeneradas** con Chromium headless: `test/preview.js` + `npm run
+    preview` (requiere `chromium` y `magick`). Genera `images/preview.png`,
+    `preview-light.png`, `preview-lyrics.png`, y los montajes `preview-themes.png`
+    (9 paletas) y `preview-visualizers.png` (6 estilos). README muestra estas
+    nuevas imágenes.
+- **Pendiente**: aún NO se ha publicado (sin commit/tag/release). Decidir si se
+  sube.
+
+## Dónde nos quedamos (sesión anterior → v0.4.0)
 - **Publicado v0.4.0** el 2026-10-13. Commit `954a5b2` en `main`, tag `v0.4.0`,
   release: https://github.com/Frank3e/cliamp-radio-card/releases/tag/v0.4.0
   CI (HACS + validate) en verde en los runs del push y del tag.
@@ -105,16 +148,19 @@ Home Assistant del usuario: `http://192.168.50.202:8123`.
 - Verificar antes de subir:
   - `node --check dist/cliamp-radio-card.js`
   - pruebas jsdom: `cd test && npm install && npm test` (test2 + featcheck +
-    editorcheck + eqcheck). Antes vivían en `/tmp/opencode/card-test`; ahora en `test/`.
+    editorcheck + eqcheck + vizcheck + lyrcheck). Antes vivían en
+    `/tmp/opencode/card-test`; ahora en `test/`.
 - `this._built` debe ponerse a `true` al final de `_init()`; si no, la tarjeta se
   reconstruye en cada actualización de estado y pierde el estado.
 - La estética incluye un **EQ animado** (`.eqbars`, 10 barras, animación CSS
   `eqb` activada por la clase `.playing`) y **adaptación al tamaño** vía
   `ResizeObserver` en `_watchSize()`/`_applySize()` que aplica `.hide-keys`,
   `.tight`, `.roomy`. `getGridOptions()` define el tamaño en Sections view.
-- **Config (`setConfig`)**: `entity`, `theme` (auto|dark|light), `stations`
-  (dropdown|list, fuente Local), `eq_animate` (always|playing|off), `show_eq`,
-  `hide_keys`, `dense`.
+- **Config (`setConfig`)**: `entity`, `theme` (auto|dark|light), `palette`
+  (omarchy|matte-black|catppuccin-mocha|catppuccin-latte|flexoki-light|ethereal|
+  tokyo-night|nord|gruvbox-dark), `visualizer` (bars|blocks|peak|mirror|dots|off),
+  `stations` (dropdown|list, fuente Local), `eq_animate` (always|playing|off),
+  `show_eq`, `lyrics` (off|on), `hide_keys`, `dense`.
   El tema se resuelve en `_isDark()`/`_applyTheme()` (usa `hass.themes.darkMode`
   con `theme:auto`). Las emisoras de Omarchy en desplegable se pintan en
   `_renderPick()`; con `stations:list` se oculta el `select` y se ve la lista.

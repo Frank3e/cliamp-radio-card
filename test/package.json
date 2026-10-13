@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "description": "Pruebas jsdom de la tarjeta cliamp-radio-card",
   "scripts": {
-    "test": "node test2.js && node featcheck.js && node editorcheck.js && node eqcheck.js",
-    "snap": "node snap.js"
+    "test": "node test2.js && node featcheck.js && node editorcheck.js && node eqcheck.js && node vizcheck.js && node lyrcheck.js",
+    "snap": "node snap.js",
+    "preview": "node preview.js"
   },
   "devDependencies": {
     "jsdom": "^24.0.0"

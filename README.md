@@ -10,9 +10,30 @@ cualquier emisora de `radio-browser.info`, y navegación de tu **biblioteca de
 Music Assistant**. Reproduce en cualquier `media_player` (incluidos los de
 Music Assistant).
 
+Incluye un **visualizer de espectro** con varios estilos, **9 paletas** tipo
+cliamp y **letras sincronizadas** (LRCLIB).
+
 | Tema oscuro | Tema claro |
 | --- | --- |
 | ![Cliamp Radio Card (oscuro)](images/preview.png) | ![Cliamp Radio Card (claro)](images/preview-light.png) |
+
+### Visualizer de espectro
+
+Seis estilos: `bars`, `blocks`, `peak`, `mirror`, `dots` y `off`.
+
+![Estilos del visualizer](images/preview-visualizers.png)
+
+### Paletas (temas)
+
+Nueve paletas tipo cliamp, incluida la `omarchy` por defecto.
+
+![Paletas](images/preview-themes.png)
+
+### Letras sincronizadas
+
+Con `lyrics: on`, la letra de la pista se resalta línea a línea (LRCLIB).
+
+![Letras sincronizadas](images/preview-lyrics.png)
 
 ## Fuentes (se cambian con ←/→ o clic en `SRC`)
 
@@ -47,10 +68,13 @@ type: custom:cliamp-radio-card
 entity: media_player.salon   # opcional: altavoz por defecto
 
 # Todas opcionales:
-theme: auto         # auto (sigue día/noche de HA) | dark (negro) | light (blanco)
+theme: auto         # auto (sigue día/noche de HA) | dark (negro) | light (blanco) — solo con palette: omarchy
+palette: omarchy    # omarchy | matte-black | catppuccin-mocha | catppuccin-latte | flexoki-light | ethereal | tokyo-night | nord | gruvbox-dark
+visualizer: bars    # bars | blocks | peak | mirror | dots | off
 stations: dropdown  # dropdown (menú desplegable de las 12 de Omarchy) | list
 eq_animate: always  # always (siempre) | playing (solo al reproducir) | off
-show_eq: true       # mostrar el ecualizador animado
+show_eq: true       # mostrar el visualizer de espectro
+lyrics: off         # off | on (letras sincronizadas vía LRCLIB)
 hide_keys: false    # ocultar la leyenda de teclas
 dense: false        # formato compacto
 ```
@@ -63,10 +87,13 @@ Sin `entity`, autodetecta todos los `media_player`; elige el altavoz en la fila
 | Opción       | Valores                | Por defecto | Qué hace                                              |
 | ------------ | ---------------------- | ----------- | ----------------------------------------------------- |
 | `entity`     | id de `media_player`   | autodetecta | Altavoz por defecto.                                   |
-| `theme`      | `auto` / `dark` / `light` | `auto`   | Fondo **negro** de noche o **blanco** de día (sigue a HA). |
+| `theme`      | `auto` / `dark` / `light` | `auto`   | Fondo **negro** de noche o **blanco** de día (sigue a HA). Solo aplica con `palette: omarchy`. |
+| `palette`    | `omarchy` / `matte-black` / `catppuccin-mocha` / `catppuccin-latte` / `flexoki-light` / `ethereal` / `tokyo-night` / `nord` / `gruvbox-dark` | `omarchy` | Tema de color completo (estilo cliamp). Las paletas claras fuerzan fondo claro. |
+| `visualizer` | `bars` / `blocks` / `peak` / `mirror` / `dots` / `off` | `bars` | Estilo del **visualizer de espectro** (32 barras). |
 | `stations`   | `dropdown` / `list`    | `dropdown`  | Emisoras de Omarchy en un **menú desplegable** o como lista. |
-| `eq_animate` | `always` / `playing` / `off` | `always` | Cuándo animan las barras del EQ.          |
-| `show_eq`    | `true` / `false`       | `true`      | Muestra/oculta el ecualizador animado.                 |
+| `eq_animate` | `always` / `playing` / `off` | `always` | Cuándo animan las barras del visualizer.          |
+| `show_eq`    | `true` / `false`       | `true`      | Muestra/oculta el visualizer de espectro.              |
+| `lyrics`     | `off` / `on`           | `off`       | Muestra **letras sincronizadas** (karaoke) traídas de LRCLIB. |
 | `hide_keys`  | `true` / `false`       | `false`     | Oculta la leyenda de atajos de teclado.                |
 | `dense`      | `true` / `false`       | `false`     | Formato compacto (útil en huecos pequeños).            |
 
@@ -89,13 +116,24 @@ Los favoritos y el último altavoz elegido se guardan en el navegador (`localSto
 
 - **Tema claro/oscuro**: con `theme: auto` el fondo es **negro** de noche y
   **blanco** de día (sigue el modo día/noche de Home Assistant). Se puede forzar
-  con `theme: dark` o `theme: light`.
+  con `theme: dark` o `theme: light`. Solo afecta a la paleta por defecto
+  (`omarchy`).
+- **Paletas (temas)**: `palette` reemplaza toda la gama de color del card por una
+  de las **9 paletas tipo cliamp** (`matte-black`, `catppuccin-mocha`,
+  `catppuccin-latte`, `flexoki-light`, `ethereal`, `tokyo-night`, `nord`,
+  `gruvbox-dark`). Las claras ponen fondo claro automáticamente.
+- **Visualizer de espectro**: 32 barras animadas con 6 estilos — `bars` (por
+  defecto), `blocks` (LED segmentado), `peak` (con tope que cae), `mirror`
+  (centrado), `dots` (matriz de puntos) y `off`. Se ve en vivo con
+  `eq_animate: always`; con `playing` solo al reproducir y con `off` queda quieto.
+  Respeta `prefers-reduced-motion`; se oculta con `show_eq: false`.
+- **Letras sincronizadas**: con `lyrics: on`, el card busca la letra de la pista
+  en **LRCLIB** y resalta la línea activa en un panel tipo karaoke (usa
+  `media_position` del reproductor). Si solo hay letra sin tiempos, se muestra
+  sin resaltado.
 - **Emisoras en desplegable**: con `stations: dropdown` (por defecto) las 12
   emisoras de Omarchy van en un menú desplegable más estilizado; con `list` se
   muestran como lista.
-- **EQ animado**: barras que "bailan". Por defecto `eq_animate: always`; con
-  `playing` solo al reproducir y con `off` quedan quietas. Respeta
-  `prefers-reduced-motion`; se oculta con `show_eq: false`.
 - **Formas configurables**: `dense` (compacto) y `hide_keys` (sin pie de teclas)
   además de la adaptación automática al hueco.
 - **Sections view**: `getGridOptions()` permite redimensionarla (por defecto 6 de
