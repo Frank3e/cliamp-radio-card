@@ -10,7 +10,9 @@ cualquier emisora de `radio-browser.info`, y navegación de tu **biblioteca de
 Music Assistant**. Reproduce en cualquier `media_player` (incluidos los de
 Music Assistant).
 
-![Cliamp Radio Card](images/preview.png)
+| Tema oscuro | Tema claro |
+| --- | --- |
+| ![Cliamp Radio Card (oscuro)](images/preview.png) | ![Cliamp Radio Card (claro)](images/preview-light.png) |
 
 ## Fuentes (se cambian con ←/→ o clic en `SRC`)
 

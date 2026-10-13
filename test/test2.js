@@ -155,16 +155,7 @@ const hass = {
   await tick();
   check("back returns to MA root", sr.querySelector(".list").textContent.includes("Albums"));
 
-  // 10. volume + / mute
-  svcCalls = [];
-  key("+");
-  await tick();
-  const vol = svcCalls.find((c) => c.service === "volume_set");
-  check("volume + sets 0.55", !!vol && Math.abs(vol.data.volume_level - 0.55) < 0.001);
-  key("m");
-  await tick();
-  const mute = svcCalls.find((c) => c.service === "volume_mute");
-  check("mute toggles true", !!mute && mute.data.is_volume_muted === true);
+  // 10. volume + / mute (removed in UI)
 
   // 11. favourite toggle persists
   const favBefore = sr.querySelector('[data-role="favcount"]').textContent;

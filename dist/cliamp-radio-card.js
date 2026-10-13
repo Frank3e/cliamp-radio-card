@@ -116,8 +116,8 @@ const STYLE = `
 .eq .lbl { font-weight:700; }
 .eq .preset { color:var(--yellow); }
 .eq .playing { color:var(--green); }
-.eqbars { display:flex; align-items:flex-end; gap:3px; height:26px; margin:3px 0 1px; }
-.eqbars .bar { flex:1 1 0; height:100%; display:flex; align-items:flex-end; }
+  .eqbars { display:flex; align-items:flex-end; gap:3px; height:34px; margin:3px 0 1px; }
+  .eqbars .bar { flex:1 1 0; height:100%; display:flex; align-items:flex-end; }
 .eqbars .bar i {
   display:block; width:100%; height:100%; background:var(--green); border-radius:1px;
   transform:scaleY(.28); transform-origin:bottom center; opacity:.92;
@@ -209,15 +209,17 @@ kbd {
 .hint { color:var(--muted); }
 
 /* --- responsive / adaptable to the card size ----------------------------- */
-.crt.hide-keys .keys { display:none; }
-.crt.hide-keys .spd { display:none; }
+  .crt.hide-keys .keys { display:none; }
+  .crt.hide-keys .spd { display:none; }
+  .keys[style*="display:none"] { display:none !important; }
 .crt.tight { font-size:12px; padding:8px 10px 6px; }
 .crt.tight .list { min-height:52px; }
-.crt.tight .eqbars { height:16px; }
-.crt.tight .transport button { min-width:38px; padding:7px 4px; font-size:14px; }
-.crt.tight .tabs button { padding:6px 8px; }
-.crt.roomy { font-size:13px; }
-.crt.roomy .list { min-height:120px; }
+  .crt.tight .eqbars { height:22px; }
+  .crt.tight .transport button { min-width:38px; padding:7px 4px; font-size:14px; }
+  .crt.tight .tabs button { padding:6px 8px; }
+  .crt.roomy { font-size:13px; }
+  .crt.roomy .eqbars { height:40px; }
+  .crt.roomy .list { min-height:120px; }
 .crt.roomy .eqbars { height:34px; }
 `;
 
@@ -383,7 +385,7 @@ class CliampRadioCard extends HTMLElement {
     const cfg = this._config || {};
     const autoNarrow = w > 0 && w < 300;
     const autoTight = (w > 0 && w < 300) || (h > 0 && h < 230);
-    crt.classList.toggle("hide-keys", cfg.hide_keys === true || autoNarrow);
+    crt.classList.toggle("hide-keys", true);
     crt.classList.toggle("tight", cfg.dense === true || autoTight);
     crt.classList.toggle("roomy", !cfg.dense && w >= 520 && h >= 320);
     crt.classList.toggle("no-eq", cfg.show_eq === false);
@@ -441,11 +443,7 @@ class CliampRadioCard extends HTMLElement {
           </div>
           <div class="srcrow">
             <button class="src" data-role="src" data-act="src"></button>
-            <span class="volbtns">
-              <button data-act="voldn" title="Bajar volumen">−</button>
-              <button data-act="volup" title="Subir volumen">+</button>
-              <button data-act="mute" title="Silenciar">mute</button>
-            </span>
+            <span class="volbtns"></span>
           </div>
           <div class="tabs" data-role="tabs"></div>
           <div class="outrow pickrow" data-role="pickrow" hidden>
@@ -477,17 +475,7 @@ class CliampRadioCard extends HTMLElement {
             <input class="vslide" data-role="vol" type="range" min="0" max="1" step="0.01"
                    title="Volumen" aria-label="Volumen" />
           </div>
-          <div class="keys">
-            <span><kbd>↑↓</kbd> <span class="txt">Move</span></span>
-            <span><kbd>↵</kbd> <span class="txt">Play</span></span>
-            <span><kbd>Space</kbd> <span class="txt">Pause</span></span>
-            <span><kbd>/</kbd> <span class="txt">Search</span></span>
-            <span><kbd>←→</kbd> <span class="txt">Source</span></span>
-            <span><kbd>n/p</kbd> <span class="txt">Next/Prev</span></span>
-            <span><kbd>f</kbd> <span class="txt">★/♥︎</span></span>
-            <span><kbd>m</kbd> <span class="txt">Mute</span></span>
-            <span><kbd>x</kbd> <span class="txt">Stop</span></span>
-          </div>
+          <div class="keys" style="display:none"></div>
           <div class="spd"><span class="lbl">SPD</span> <span class="val">[1x]</span></div>
         </div>
       </div>`;
@@ -865,21 +853,15 @@ class CliampRadioCard extends HTMLElement {
       ev.preventDefault();
       this._setSource(SOURCES.findIndex((s) => s.key === "search"));
       const input = this.shadowRoot.querySelector('[data-role="search"]');
-      input.focus();
+      if (input) input.focus();
     } else if (k === "n") {
       this._next(1);
     } else if (k === "p") {
       this._next(-1);
     } else if (k === "x") {
       this._stop();
-    } else if (k === "m") {
-      this._mute();
     } else if (k === "f") {
       this._toggleFav();
-    } else if (k === "+" || k === "=") {
-      this._vol(0.05);
-    } else if (k === "-" || k === "_") {
-      this._vol(-0.05);
     } else if (k === "Escape" || k === "Backspace") {
       ev.preventDefault();
       this._back();
@@ -888,9 +870,6 @@ class CliampRadioCard extends HTMLElement {
 
   _onAction(act) {
     if (act === "src") this._setSource(this._source + 1);
-    else if (act === "voldn") this._vol(-0.05);
-    else if (act === "volup") this._vol(0.05);
-    else if (act === "mute") this._mute();
     else if (act === "pp") this._togglePlay();
     else if (act === "stop") this._stop();
     else if (act === "next") this._next(1);
@@ -1023,8 +1002,7 @@ class CliampRadioCard extends HTMLElement {
     const eq = this.shadowRoot.querySelector('[data-role="eq"]');
     if (eq) {
       eq.innerHTML =
-        `<span class="lbl">EQ</span> <span class="preset">[Custom]</span> ` +
-        `<span class="${playing ? "playing" : ""}">70 180 320 600 1k 3k 6k 12k 14k 16k</span>`;
+        `<span class="lbl">EQ</span> <span class="${playing ? "playing" : ""}"></span>`;
     }
 
     this._renderVol();
